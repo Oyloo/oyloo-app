@@ -65,17 +65,18 @@ struct VaultPickerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                previewChip
-                if store.vaults.isEmpty {
-                    emptyState
-                } else {
-                    buttonGrid
+            GeometryReader { geometry in
+                let landscape = geometry.size.width > geometry.size.height && geometry.size.width >= 640
+                Group {
+                    if landscape {
+                        landscapeLayout
+                    } else {
+                        portraitLayout
+                    }
                 }
-                if isProcessing { processingHint }
-                Spacer(minLength: 0)
+                .padding(20)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding(20)
             .navigationTitle("Save share")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -84,6 +85,41 @@ struct VaultPickerView: View {
                 }
             }
             .background(.regularMaterial)
+        }
+    }
+
+    private var portraitLayout: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            previewChip
+            if store.vaults.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    buttonGrid(minimum: 140)
+                }
+            }
+            if isProcessing { processingHint }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var landscapeLayout: some View {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
+                previewChip
+                if isProcessing { processingHint }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: 300)
+
+            if store.vaults.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    buttonGrid(minimum: 124)
+                }
+            }
         }
     }
 
@@ -119,7 +155,7 @@ struct VaultPickerView: View {
                 .foregroundStyle(.secondary)
             Text("No vaults configured")
                 .font(.headline)
-            Text("Open the Oyloo Way app and add at least one vault, then come back to save this share.")
+            Text("Open the Oyloo app and add at least one vault, then come back to save this share.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -127,10 +163,10 @@ struct VaultPickerView: View {
         .frame(maxWidth: .infinity, minHeight: 160)
     }
 
-    private var buttonGrid: some View {
+    private func buttonGrid(minimum: CGFloat) -> some View {
         // Adaptive grid handles 1, 2, 3, 4+ vaults gracefully.
         LazyVGrid(columns: [
-            GridItem(.adaptive(minimum: 140), spacing: 12)
+            GridItem(.adaptive(minimum: minimum), spacing: 12)
         ], spacing: 12) {
             ForEach(store.vaults) { vault in
                 vaultButton(vault)

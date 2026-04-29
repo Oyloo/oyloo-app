@@ -1,6 +1,6 @@
 # Oyloo App
 
-iOS capture + chat surface for [Oyloo Way](https://github.com/oyloo).
+iOS capture + chat surface for [Oyloo](https://github.com/oyloo).
 
 ## What it does
 
@@ -51,12 +51,13 @@ managing vaults.
 
 ```bash
 cd ~/dev/oyloo/oyloo-app
+swift scripts/generate-app-icon.swift
 xcodegen
-xcodebuild -project LifeOSShare.xcodeproj -scheme LifeOSShare -configuration Debug \
+xcodebuild -project Oyloo.xcodeproj -scheme Oyloo -configuration Debug \
   -destination 'generic/platform=iOS' -allowProvisioningUpdates build
 
 # Install + launch on a connected device:
-APP=$(find ~/Library/Developer/Xcode/DerivedData/LifeOSShare-*/Build/Products/Debug-iphoneos -name 'life-os.app' -print -quit)
+APP=$(find ~/Library/Developer/Xcode/DerivedData/Oyloo-*/Build/Products/Debug-iphoneos -name 'Oyloo.app' -print -quit)
 xcrun devicectl device install app --device <UDID> "$APP"
 xcrun devicectl device process launch --device <UDID> com.oyloo.lifeos.app
 ```
@@ -79,10 +80,11 @@ oyloo-app/
 ├── AGENTS.md  (CLAUDE.md, GEMINI.md → symlinks)
 ├── project.yml                  # XcodeGen spec
 ├── .gitignore
-├── scripts/                     # private-terms pre-commit hook + installer
+├── scripts/                     # app icon generator + git hooks
 └── Sources/
     ├── App/                     # Container app (SwiftUI)
-    │   ├── LifeOSShareApp.swift
+    │   ├── OylooApp.swift
+    │   ├── Assets.xcassets
     │   ├── ContentView.swift
     │   ├── VaultManagementView.swift
     │   ├── Info.plist
@@ -102,9 +104,9 @@ oyloo-app/
 
 ## Status
 
-Pre-alpha. Bundle id and Xcode project name carry legacy `LifeOSShare`
-naming for now; that rename is deferred (it would force re-provisioning
-and lose any local data). The app's user-facing identity is **Oyloo Way**.
+Pre-alpha. The app's user-facing identity is **Oyloo**. Bundle IDs and
+the App Group still use the existing `com.oyloo.lifeos` identifiers so local
+data and provisioning keep working while the app is iterated.
 
 ## License
 

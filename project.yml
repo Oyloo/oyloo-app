@@ -1,4 +1,4 @@
-name: LifeOSShare
+name: Oyloo
 options:
   bundleIdPrefix: com.oyloo.lifeos
   deploymentTarget:
@@ -18,7 +18,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
 
 targets:
-  LifeOSShare:
+  Oyloo:
     type: application
     platform: iOS
     sources:
@@ -30,7 +30,8 @@ targets:
         INFOPLIST_FILE: Sources/App/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/App/App.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
-        PRODUCT_NAME: life-os
+        PRODUCT_NAME: Oyloo
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: ShareExtension
 
@@ -46,4 +47,4 @@ targets:
         INFOPLIST_FILE: Sources/Extension/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/Extension/Extension.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
-        PRODUCT_NAME: ShareToLifeOS
+        PRODUCT_NAME: ShareToOyloo

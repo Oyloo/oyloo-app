@@ -5,10 +5,40 @@ import QuickLook
 struct ContentView: View {
     @Bindable var vaultStore: VaultStore
     @State private var items: [SharedItem] = []
+    @State private var selectedVaultKey: String?
+    @State private var settingsSelected = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        GeometryReader { geometry in
+            let landscape = geometry.size.width > geometry.size.height && geometry.size.width >= 640
+            Group {
+                if landscape {
+                    landscapeShell
+                } else {
+                    portraitTabs
+                }
+            }
+        }
+        .onAppear {
+            vaultStore.reload()
+            ensureSelection()
+            reload()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                vaultStore.reload()
+                ensureSelection()
+                reload()
+            }
+        }
+        .onChange(of: vaultStore.vaults.map(\.key)) { _, _ in
+            ensureSelection()
+        }
+    }
+
+    private var portraitTabs: some View {
         TabView {
             ForEach(vaultStore.vaults) { vault in
                 vaultTab(for: vault)
@@ -17,15 +47,124 @@ struct ContentView: View {
             VaultManagementView(store: vaultStore)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-        .onAppear {
-            vaultStore.reload()
-            reload()
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                vaultStore.reload()
-                reload()
+    }
+
+    private var landscapeShell: some View {
+        ZStack {
+            animatedBackground
+            HStack(spacing: 12) {
+                landscapeSidebar
+                    .frame(width: 230)
+                Group {
+                    if settingsSelected || vaultStore.vaults.isEmpty {
+                        VaultManagementView(store: vaultStore)
+                    } else if let vault = selectedVault {
+                        vaultTab(for: vault)
+                    } else {
+                        VaultManagementView(store: vaultStore)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
+            .padding(12)
+        }
+    }
+
+    private var landscapeSidebar: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Oyloo")
+                    .font(.title3.bold())
+                Text("Capture vaults")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 8) {
+                    ForEach(vaultStore.vaults) { vault in
+                        sidebarVaultButton(vault)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                settingsSelected = true
+            } label: {
+                sidebarLabel(
+                    title: "Settings",
+                    subtitle: "Vault setup",
+                    symbolName: "gearshape",
+                    tint: .secondary,
+                    selected: settingsSelected || vaultStore.vaults.isEmpty
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(14)
+        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+    }
+
+    private func sidebarVaultButton(_ vault: Vault) -> some View {
+        Button {
+            selectedVaultKey = vault.key
+            settingsSelected = false
+        } label: {
+            sidebarLabel(
+                title: vault.displayName,
+                subtitle: vault.key,
+                symbolName: vault.symbolName,
+                tint: vault.tintColor,
+                selected: !settingsSelected && selectedVaultKey == vault.key
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func sidebarLabel(title: String, subtitle: String, symbolName: String, tint: Color, selected: Bool) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbolName)
+                .font(.headline)
+                .foregroundStyle(selected ? .white : tint)
+                .frame(width: 34, height: 34)
+                .background(selected ? tint : tint.opacity(0.15), in: .rect(cornerRadius: 9))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(selected ? .white.opacity(0.78) : .secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(selected ? .white : .primary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(selected ? tint.opacity(0.95) : Color.primary.opacity(0.04), in: .rect(cornerRadius: 14))
+    }
+
+    private var selectedVault: Vault? {
+        guard let selectedVaultKey else { return nil }
+        return vaultStore.vault(forKey: selectedVaultKey)
+    }
+
+    private func ensureSelection() {
+        let keys = vaultStore.vaults.map(\.key)
+        if keys.isEmpty {
+            selectedVaultKey = nil
+            settingsSelected = true
+            return
+        }
+        if settingsSelected {
+            return
+        }
+        if selectedVaultKey.map({ keys.contains($0) }) != true {
+            selectedVaultKey = keys[0]
         }
     }
 
@@ -69,18 +208,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .background {
-                TimelineView(.animation) { ctx in
-                    let t = ctx.date.timeIntervalSinceReferenceDate
-                    MeshGradient(
-                        width: 3, height: 3,
-                        points: meshPoints(t: t),
-                        colors: meshColors
-                    )
-                    .opacity(meshOpacity)
-                    .ignoresSafeArea()
-                }
-            }
+            .background { animatedBackground }
         }
     }
 
@@ -121,6 +249,19 @@ struct ContentView: View {
 
     private func reload() {
         items = SharedStore.readAll()
+    }
+
+    private var animatedBackground: some View {
+        TimelineView(.animation) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            MeshGradient(
+                width: 3, height: 3,
+                points: meshPoints(t: t),
+                colors: meshColors
+            )
+            .opacity(meshOpacity)
+            .ignoresSafeArea()
+        }
     }
 
     private var meshColors: [Color] {
@@ -170,6 +311,7 @@ struct ContentView: View {
 private struct ItemRow: View {
     let item: SharedItem
     @State private var quickLookURL: URL?
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var attachmentFileURL: URL? {
         guard let path = item.attachmentPath else { return nil }
@@ -248,7 +390,7 @@ private struct ItemRow: View {
                             .frame(width: geo.size.width, height: geo.size.height)
                     }
                 }
-                .frame(height: 260)
+                .frame(height: verticalSizeClass == .compact ? 150 : 260)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 Image(systemName: "photo.badge.exclamationmark")

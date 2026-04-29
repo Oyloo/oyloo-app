@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct LifeOSShareApp: App {
+struct OylooApp: App {
     @State private var vaultStore = VaultStore()
 
     var body: some Scene {
