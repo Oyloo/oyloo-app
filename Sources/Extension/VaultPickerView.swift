@@ -38,9 +38,6 @@ struct SharePreviewModel {
             )
         }
         if let text = item.text {
-            // Use the actual text content as the title rather than the
-            // literal word "Text" — far more informative when scanning
-            // the picker chip.
             let snippet = String(text.prefix(80))
             return SharePreviewModel(
                 title: item.title ?? snippet,
@@ -56,20 +53,25 @@ struct SharePreviewModel {
     }
 }
 
-/// Two-button vault picker shown inside the share extension. Renders
-/// the share preview at the top, then Life / Work as large buttons.
-/// Disables actions while the upstream item is still being extracted.
+/// Vault picker shown inside the share extension. Renders the share
+/// preview at the top, then one button per user-defined vault. Empty
+/// state when the user has not configured any vault yet.
 struct VaultPickerView: View {
     let preview: SharePreviewModel
     let isProcessing: Bool
     let onSelect: (Vault) -> Void
     let onCancel: () -> Void
+    @Bindable var store: VaultStore
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
                 previewChip
-                buttonRow
+                if store.vaults.isEmpty {
+                    emptyState
+                } else {
+                    buttonGrid
+                }
                 if isProcessing { processingHint }
                 Spacer(minLength: 0)
             }
@@ -110,19 +112,38 @@ struct VaultPickerView: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 14))
     }
 
-    private var buttonRow: some View {
-        HStack(spacing: 12) {
-            vaultButton(.life, tint: .pink)
-            vaultButton(.work, tint: .blue)
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "tray")
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+            Text("No vaults configured")
+                .font(.headline)
+            Text("Open the Oyloo Way app and add at least one vault, then come back to save this share.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, minHeight: 160)
+    }
+
+    private var buttonGrid: some View {
+        // Adaptive grid handles 1, 2, 3, 4+ vaults gracefully.
+        LazyVGrid(columns: [
+            GridItem(.adaptive(minimum: 140), spacing: 12)
+        ], spacing: 12) {
+            ForEach(store.vaults) { vault in
+                vaultButton(vault)
+            }
         }
     }
 
-    private func vaultButton(_ vault: Vault, tint: Color) -> some View {
+    private func vaultButton(_ vault: Vault) -> some View {
         Button { onSelect(vault) } label: {
             VStack(spacing: 10) {
                 Image(systemName: vault.symbolName)
                     .font(.system(size: 36))
-                    .foregroundStyle(tint)
+                    .foregroundStyle(vault.tintColor)
                 Text(vault.displayName)
                     .font(.headline)
                     .foregroundStyle(.primary)

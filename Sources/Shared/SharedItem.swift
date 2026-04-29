@@ -1,33 +1,11 @@
 import Foundation
 
-/// Destination vault for a captured share. The picker in the share
-/// extension assigns this; the container app reads both outboxes and
-/// renders a per-row badge. Sync workers (future) ship each outbox to
-/// its respective backend (life-os vs also-os).
-public enum Vault: String, Codable, CaseIterable, Hashable {
-    case life
-    case work
-
-    public var displayName: String {
-        switch self {
-        case .life: return "Life"
-        case .work: return "Work"
-        }
-    }
-
-    public var symbolName: String {
-        switch self {
-        case .life: return "heart.fill"
-        case .work: return "briefcase.fill"
-        }
-    }
-}
-
 public struct SharedItem: Codable, Identifiable, Hashable {
     public let id: UUID
-    /// Destination vault. Defaults to `.life` when decoding legacy rows
-    /// that pre-date the picker (no field present in JSON).
-    public let vault: Vault
+    /// Stable slug of the chosen vault (matches `Vault.key`). The user
+    /// defines vaults in app settings; the share extension stamps each
+    /// share with the user's selection.
+    public let vaultKey: String
     /// Source URL when sharing a link / web page. `nil` for plain-text
     /// quotes and standalone attachments.
     public let url: String?
@@ -46,7 +24,7 @@ public struct SharedItem: Codable, Identifiable, Hashable {
     public let sharedAt: Date
 
     public init(
-        vault: Vault = .life,
+        vaultKey: String = SharedStore.defaultVaultKey,
         url: String? = nil,
         title: String? = nil,
         text: String? = nil,
@@ -55,7 +33,7 @@ public struct SharedItem: Codable, Identifiable, Hashable {
     ) {
         self.init(
             id: UUID(),
-            vault: vault,
+            vaultKey: vaultKey,
             url: url,
             title: title,
             text: text,
@@ -67,7 +45,7 @@ public struct SharedItem: Codable, Identifiable, Hashable {
 
     private init(
         id: UUID,
-        vault: Vault,
+        vaultKey: String,
         url: String?,
         title: String?,
         text: String?,
@@ -76,7 +54,7 @@ public struct SharedItem: Codable, Identifiable, Hashable {
         sharedAt: Date
     ) {
         self.id = id
-        self.vault = vault
+        self.vaultKey = vaultKey
         self.url = url
         self.title = title
         self.text = text
@@ -86,15 +64,25 @@ public struct SharedItem: Codable, Identifiable, Hashable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, vault, url, title, text, attachmentPath, mimeType, sharedAt
+        case id, vault, vaultKey, url, title, text, attachmentPath, mimeType, sharedAt
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let vault = (try? c.decode(Vault.self, forKey: .vault)) ?? .life
+        // Migration: pre-refactor format had `"vault":"<enum-case>"`
+        // with two hardcoded cases. New format is `"vaultKey":"<user-slug>"`.
+        // Decode either; fall back to default so the row stays usable.
+        let vaultKey: String
+        if let key = try? c.decode(String.self, forKey: .vaultKey) {
+            vaultKey = key
+        } else if let legacy = try? c.decode(String.self, forKey: .vault) {
+            vaultKey = legacy
+        } else {
+            vaultKey = SharedStore.defaultVaultKey
+        }
         self.init(
             id: try c.decode(UUID.self, forKey: .id),
-            vault: vault,
+            vaultKey: vaultKey,
             url: try c.decodeIfPresent(String.self, forKey: .url),
             title: try c.decodeIfPresent(String.self, forKey: .title),
             text: try c.decodeIfPresent(String.self, forKey: .text),
@@ -104,14 +92,27 @@ public struct SharedItem: Codable, Identifiable, Hashable {
         )
     }
 
-    /// Returns a copy of this item with `vault` replaced. Used by the
-    /// share extension to stamp the user's picker choice onto an item
-    /// that was extracted before the choice was made. Preserves `id`
-    /// and `sharedAt` so the row identity is stable.
-    public func with(vault: Vault) -> SharedItem {
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(vaultKey, forKey: .vaultKey)
+        try c.encodeIfPresent(url, forKey: .url)
+        try c.encodeIfPresent(title, forKey: .title)
+        try c.encodeIfPresent(text, forKey: .text)
+        try c.encodeIfPresent(attachmentPath, forKey: .attachmentPath)
+        try c.encodeIfPresent(mimeType, forKey: .mimeType)
+        try c.encode(sharedAt, forKey: .sharedAt)
+        // Note: legacy `.vault` key intentionally omitted from output —
+        // we read both formats but only write the new one.
+    }
+
+    /// Returns a copy with `vaultKey` replaced. Used by the share
+    /// extension to stamp the user's picker choice onto an item that
+    /// was extracted before the choice was made.
+    public func with(vaultKey: String) -> SharedItem {
         SharedItem(
             id: self.id,
-            vault: vault,
+            vaultKey: vaultKey,
             url: self.url,
             title: self.title,
             text: self.text,

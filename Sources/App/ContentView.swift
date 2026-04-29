@@ -3,81 +3,42 @@ import UIKit
 import QuickLook
 
 struct ContentView: View {
+    @Bindable var vaultStore: VaultStore
     @State private var items: [SharedItem] = []
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
-    @State private var debugContent: String = ""
-
     var body: some View {
         TabView {
-            vaultTab(for: .life)
-                .tabItem { Label(Vault.life.displayName, systemImage: Vault.life.symbolName) }
-            vaultTab(for: .work)
-                .tabItem { Label(Vault.work.displayName, systemImage: Vault.work.symbolName) }
-            debugTab
-                .tabItem { Label("Debug", systemImage: "ladybug.fill") }
+            ForEach(vaultStore.vaults) { vault in
+                vaultTab(for: vault)
+                    .tabItem { Label(vault.displayName, systemImage: vault.symbolName) }
+            }
+            VaultManagementView(store: vaultStore)
+                .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-        .onAppear { reload() }
+        .onAppear {
+            vaultStore.reload()
+            reload()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                vaultStore.reload()
                 reload()
-                debugContent = ShareLog.read()
             }
-        }
-    }
-
-    @ViewBuilder
-    private var debugTab: some View {
-        NavigationStack {
-            ScrollView {
-                if debugContent.isEmpty {
-                    ContentUnavailableView(
-                        "No debug events yet",
-                        systemImage: "ladybug",
-                        description: Text("Share something — the extension will record providers, dispatcher choice, and the final extracted item here.")
-                    )
-                    .padding(.top, 40)
-                } else {
-                    Text(debugContent)
-                        .font(.system(size: 11, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                }
-            }
-            .refreshable { debugContent = ShareLog.read() }
-            .navigationTitle("Debug")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Clear") {
-                        ShareLog.clear()
-                        debugContent = ""
-                    }
-                }
-            }
-            .background {
-                TimelineView(.animation) { ctx in
-                    let t = ctx.date.timeIntervalSinceReferenceDate
-                    MeshGradient(width: 3, height: 3, points: meshPoints(t: t), colors: meshColors)
-                        .opacity(meshOpacity)
-                        .ignoresSafeArea()
-                }
-            }
-            .onAppear { debugContent = ShareLog.read() }
         }
     }
 
     @ViewBuilder
     private func vaultTab(for vault: Vault) -> some View {
-        let groups = groupedItems(for: vault)
+        let groups = groupedItems(for: vault.key)
         NavigationStack {
             Group {
                 if groups.isEmpty {
                     ContentUnavailableView(
                         "No \(vault.displayName.lowercased()) shares yet",
                         systemImage: vault.symbolName,
-                        description: Text("Share a URL, photo, file, or text from any app, pick \"Life OS\", then tap \(vault.displayName).")
+                        description: Text("Share a URL, photo, file, or text from any app and pick \(vault.displayName) in the picker.")
                     )
                 } else {
                     List {
@@ -130,10 +91,10 @@ struct ContentView: View {
         var id: Date { day }
     }
 
-    private func groupedItems(for vault: Vault) -> [DayGroup] {
+    private func groupedItems(for vaultKey: String) -> [DayGroup] {
         let calendar = Calendar.current
         let sorted = items
-            .filter { $0.vault == vault }
+            .filter { $0.vaultKey == vaultKey }
             .sorted(by: { $0.sharedAt > $1.sharedAt })
         let grouped = Dictionary(grouping: sorted) { calendar.startOfDay(for: $0.sharedAt) }
         return grouped.keys.sorted(by: >).map { day in
@@ -218,8 +179,6 @@ private struct ItemRow: View {
     var body: some View {
         Group {
             if item.attachmentPath != nil {
-                // Image / file → open via QuickLook (native zoom, share,
-                // save, markup — works for image, PDF, doc, txt, video).
                 Button { quickLookURL = attachmentFileURL } label: { rowContent }
             } else if item.isLink, let url = URL(string: item.url ?? "") {
                 Link(destination: url) { rowContent }
@@ -277,16 +236,12 @@ private struct ItemRow: View {
                let img = UIImage(contentsOfFile: url.path) {
                 GeometryReader { geo in
                     ZStack {
-                        // Blurred backdrop — scaledToFill at known geo,
-                        // clipped, then blurred + faded.
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFill()
                             .frame(width: geo.size.width, height: geo.size.height)
                             .clipped()
                             .blur(radius: 24)
-                        // Sharp foreground — scaledToFit at known geo,
-                        // whole image visible, letterbox shows backdrop.
                         Image(uiImage: img)
                             .resizable()
                             .scaledToFit()
@@ -404,5 +359,5 @@ private struct ItemRow: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(vaultStore: VaultStore())
 }

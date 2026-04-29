@@ -2,26 +2,28 @@ import Foundation
 
 /// Append-only JSONL outboxes shared between the container app and the
 /// share extension via App Group container. One outbox file per vault
-/// (`outbox-life.jsonl`, `outbox-work.jsonl`); routing is by
-/// `item.vault`. Future sync workers tail each file and ship to the
-/// matching backend (life-os vs also-os).
+/// key (`outbox-<key>.jsonl`); routing is by `item.vaultKey`. Future
+/// sync workers tail each file and ship to the matching backend.
 public enum SharedStore {
     public static let appGroupID = "group.com.oyloo.lifeos"
 
-    /// Legacy single outbox written before the picker landed. Reads
-    /// migrate its contents into the per-vault files, then it is
-    /// deleted. Decoded rows default to `.life` per `SharedItem`'s
-    /// custom Codable init.
+    /// Pre-refactor single outbox written before the picker landed.
+    /// Migrated into per-vault files on first read; legacy file is
+    /// removed afterwards.
     public static let legacyOutboxFileName = "outbox.jsonl"
 
-    public static func outboxFileName(for vault: Vault) -> String {
-        "outbox-\(vault.rawValue).jsonl"
+    /// Default vault key used when decoding legacy items that have no
+    /// `vaultKey` and no `vault` field (defensive fallback).
+    public static let defaultVaultKey = "default"
+
+    public static func outboxFileName(forKey key: String) -> String {
+        "outbox-\(key).jsonl"
     }
 
-    public static func outboxURL(for vault: Vault) -> URL? {
+    public static func outboxURL(forKey key: String) -> URL? {
         FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appendingPathComponent(outboxFileName(for: vault))
+            .appendingPathComponent(outboxFileName(forKey: key))
     }
 
     private static var legacyOutboxURL: URL? {
@@ -78,9 +80,9 @@ public enum SharedStore {
         try? FileManager.default.removeItem(at: url)
     }
 
-    /// Append an item to the outbox file matching its vault.
+    /// Append an item to the outbox file matching its vault key.
     public static func append(_ item: SharedItem) {
-        guard let url = outboxURL(for: item.vault) else { return }
+        guard let url = outboxURL(forKey: item.vaultKey) else { return }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard var data = try? encoder.encode(item) else { return }
@@ -103,43 +105,78 @@ public enum SharedStore {
 
     /// Read items from a single vault's outbox. Returns empty when the
     /// file does not exist yet.
-    public static func readAll(vault: Vault) -> [SharedItem] {
-        guard let url = outboxURL(for: vault),
+    public static func readAll(vaultKey: String) -> [SharedItem] {
+        guard let url = outboxURL(forKey: vaultKey),
               let data = try? Data(contentsOf: url) else { return [] }
         return decodeJSONL(data)
     }
 
-    /// Read all items from every vault, plus any legacy rows from the
-    /// pre-picker outbox (decoded as `.life`). Migrates legacy rows
-    /// into the per-vault files on first read so the legacy file can
-    /// be removed.
+    /// Read items from every outbox file currently present in the App
+    /// Group container, plus migrate any legacy single-file outbox.
+    /// Discovers outboxes by name pattern (`outbox-*.jsonl`) so newly
+    /// added vaults are picked up automatically without changes here.
     public static func readAll() -> [SharedItem] {
         migrateLegacyOutboxIfPresent()
-        return Vault.allCases.flatMap { readAll(vault: $0) }
+        guard let container = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID),
+              let entries = try? FileManager.default.contentsOfDirectory(
+                  at: container,
+                  includingPropertiesForKeys: nil
+              ) else { return [] }
+
+        let outboxes = entries.filter { url in
+            let name = url.lastPathComponent
+            return name.hasPrefix("outbox-") && name.hasSuffix(".jsonl")
+        }
+        return outboxes.flatMap { url -> [SharedItem] in
+            guard let data = try? Data(contentsOf: url) else { return [] }
+            return decodeJSONL(data)
+        }
     }
 
-    /// Atomic full-rewrite of one vault's outbox. Used by the container
-    /// app for swipe-to-delete; the extension only ever appends.
-    public static func replaceAll(_ items: [SharedItem], vault: Vault) {
-        guard let url = outboxURL(for: vault) else { return }
+    /// Atomic full-rewrite of one vault's outbox. Empty list removes the
+    /// outbox file (no zero-byte residue in the container).
+    public static func replaceAll(_ items: [SharedItem], forVaultKey vaultKey: String) {
+        guard let url = outboxURL(forKey: vaultKey) else { return }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         var data = Data()
-        for item in items where item.vault == vault {
+        for item in items where item.vaultKey == vaultKey {
             if let line = try? encoder.encode(item) {
                 data.append(line)
                 data.append(0x0A)
             }
         }
-        try? data.write(to: url, options: .atomic)
+        if data.isEmpty {
+            try? FileManager.default.removeItem(at: url)
+        } else {
+            try? data.write(to: url, options: .atomic)
+        }
     }
 
-    /// Convenience for callers that already have a mixed-vault list and
-    /// want to persist deletions back. Splits by vault and rewrites
-    /// each outbox file atomically.
+    /// Convenience for callers that hold a mixed-vault list (e.g. the
+    /// container app's delete handler). Splits by vault key, rewrites
+    /// the outboxes that contain remaining items, and removes outbox
+    /// files for vault keys that now have zero items.
     public static func replaceAll(_ items: [SharedItem]) {
-        for vault in Vault.allCases {
-            replaceAll(items, vault: vault)
+        let grouped = Dictionary(grouping: items, by: { $0.vaultKey })
+        for (key, items) in grouped {
+            replaceAll(items, forVaultKey: key)
+        }
+        let activeKeys = Set(grouped.keys)
+        guard let container = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID),
+              let entries = try? FileManager.default.contentsOfDirectory(
+                  at: container,
+                  includingPropertiesForKeys: nil
+              ) else { return }
+        for url in entries where url.lastPathComponent.hasPrefix("outbox-")
+                                && url.lastPathComponent.hasSuffix(".jsonl") {
+            let key = url.deletingPathExtension().lastPathComponent
+                .replacingOccurrences(of: "outbox-", with: "")
+            if !activeKeys.contains(key) {
+                try? FileManager.default.removeItem(at: url)
+            }
         }
     }
 
@@ -152,14 +189,14 @@ public enum SharedStore {
     }
 
     /// One-shot migration of the pre-picker `outbox.jsonl` into the
-    /// per-vault files. All legacy rows decode as `.life`. Idempotent —
-    /// after the first successful migration the legacy file is removed.
+    /// per-vault files. Legacy rows decode with the default vault key.
+    /// Idempotent — after the first successful migration the legacy
+    /// file is removed.
     private static func migrateLegacyOutboxIfPresent() {
         guard let url = legacyOutboxURL,
               FileManager.default.fileExists(atPath: url.path),
               let data = try? Data(contentsOf: url) else { return }
-        let items = decodeJSONL(data)
-        for item in items { append(item) }
+        for item in decodeJSONL(data) { append(item) }
         try? FileManager.default.removeItem(at: url)
     }
 }
