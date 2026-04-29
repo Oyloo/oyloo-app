@@ -55,8 +55,11 @@ if [[ -n "$HITS_CONTENT" ]]; then
     FAIL=1
 fi
 
-# Check staged file PATHS too (filenames can leak)
-HITS_NAMES=$(git diff --cached --name-only \
+# Check staged file PATHS too (filenames can leak).
+# --diff-filter=ACMR: only Added / Copied / Modified / Renamed-to.
+# Deletions are ignored — removing a file with a blocked name is the
+# right thing, not a leak.
+HITS_NAMES=$(git diff --cached --name-only --diff-filter=ACMR \
     | grep -i -F -f "$PATTERNS" \
     | head -20 || true)
 
