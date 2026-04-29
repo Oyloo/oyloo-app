@@ -1,0 +1,32 @@
+## XcodeGen output
+*.xcodeproj/
+*.xcworkspace/
+
+## Xcode user state
+xcuserdata/
+*.xcuserstate
+DerivedData/
+
+## Build artefacts
+build/
+.build/
+
+## Swift Package Manager
+.swiftpm/
+Packages/
+Package.pins
+Package.resolved
+
+## Signing / provisioning artefacts (defensive — these should never enter VCS)
+*.mobileprovision
+*.cer
+*.p12
+
+## CocoaPods (not used)
+Pods/
+
+## Logs
+*.log
+
+## macOS
+.DS_Store

@@ -1,0 +1,49 @@
+name: LifeOSShare
+options:
+  bundleIdPrefix: com.oyloo.lifeos
+  deploymentTarget:
+    iOS: "26.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "0.1"
+    GENERATE_INFOPLIST_FILE: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEVELOPMENT_TEAM: "69F5S886AL"
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  LifeOSShare:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/App
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.lifeos.app
+        INFOPLIST_FILE: Sources/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/App/App.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        PRODUCT_NAME: life-os
+    dependencies:
+      - target: ShareExtension
+
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Sources/Extension
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.lifeos.app.share
+        INFOPLIST_FILE: Sources/Extension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Extension/Extension.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        PRODUCT_NAME: ShareToLifeOS
