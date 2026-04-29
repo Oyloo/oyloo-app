@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Oyloo pre-commit hook — refuse commits that introduce blocklisted private terms.
+#
+# Designed for repos that may go public (oyloo-core, oyloo-app).
+# Reads patterns from $OYLOO_BLOCKLIST (default ~/.config/oyloo/private-terms.txt).
+# Fail-closed: refuses commit when the blocklist file is missing.
+#
+# Bypass (rare, only after deliberation):
+#   git commit --no-verify
+# and document the reason in the commit message — bypasses are auditable.
+
+set -euo pipefail
+
+BLOCKLIST="${OYLOO_BLOCKLIST:-$HOME/.config/oyloo/private-terms.txt}"
+
+if [[ ! -r "$BLOCKLIST" ]]; then
+    cat >&2 <<EOF
+🚫 Oyloo pre-commit: blocklist not found at:
+     $BLOCKLIST
+
+   This hook is fail-closed — refusing commit until the blocklist is in
+   place. Setup:
+     mkdir -p ~/.config/oyloo && chmod 700 ~/.config/oyloo
+     # transfer the canonical blocklist (1Password / scp from another Mac)
+     chmod 600 ~/.config/oyloo/private-terms.txt
+
+   To bypass intentionally (with reason in commit message):
+     git commit --no-verify
+EOF
+    exit 1
+fi
+
+# Strip comments + blanks for grep -F use
+PATTERNS=$(mktemp)
+trap 'rm -f "$PATTERNS"' EXIT
+grep -v '^[[:space:]]*#' "$BLOCKLIST" | grep -v '^[[:space:]]*$' > "$PATTERNS"
+
+if [[ ! -s "$PATTERNS" ]]; then
+    echo "🚫 Oyloo pre-commit: blocklist is empty (only comments?). Refusing." >&2
+    exit 1
+fi
+
+FAIL=0
+
+# Check ADDED lines in staged content (skip lockfiles to avoid noise)
+HITS_CONTENT=$(git diff --cached -U0 \
+        -- ':!*.lock' ':!Cargo.lock' ':!package-lock.json' ':!yarn.lock' ':!pnpm-lock.yaml' \
+    | grep -nE '^\+[^+]' \
+    | grep -i -F -f "$PATTERNS" \
+    | head -20 || true)
+
+if [[ -n "$HITS_CONTENT" ]]; then
+    echo "🚫 Oyloo pre-commit BLOCK — staged content contains private term(s):" >&2
+    echo "$HITS_CONTENT" | sed 's/^/    /' >&2
+    FAIL=1
+fi
+
+# Check staged file PATHS too (filenames can leak)
+HITS_NAMES=$(git diff --cached --name-only \
+    | grep -i -F -f "$PATTERNS" \
+    | head -20 || true)
+
+if [[ -n "$HITS_NAMES" ]]; then
+    [[ $FAIL -eq 0 ]] && echo "🚫 Oyloo pre-commit BLOCK — staged file path(s) contain private term(s):" >&2
+    [[ $FAIL -ne 0 ]] && echo "🚫 Plus staged file path(s):" >&2
+    echo "$HITS_NAMES" | sed 's/^/    /' >&2
+    FAIL=1
+fi
+
+if (( FAIL )); then
+    cat >&2 <<EOF
+
+Edit out the matched lines/paths or move the work to a private repo.
+For genuine false-positives:
+    git commit --no-verify   # and document why in the commit message
+
+Blocklist: $BLOCKLIST  (edit to refine patterns)
+EOF
+    exit 1
+fi
+
+exit 0
