@@ -45,6 +45,13 @@ struct VaultManagementView: View {
             }
             .navigationTitle("Vaults")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink {
+                        SyncSettingsView()
+                    } label: {
+                        Label("Sync", systemImage: "arrow.up.circle")
+                    }
+                }
                 if !store.vaults.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {

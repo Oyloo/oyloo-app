@@ -285,14 +285,15 @@ final class ShareViewController: UIViewController {
 
     private func extractFile(_ provider: NSItemProvider, fallbackTitle: String?, completion: @escaping (SharedItem?) -> Void) {
         provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { value, _ in
-            guard let url = value as? URL, url.isFileURL,
-                  let data = try? Data(contentsOf: url) else {
+            guard let url = value as? URL, url.isFileURL else {
                 completion(nil)
                 return
             }
             let ext = url.pathExtension.isEmpty ? "bin" : url.pathExtension.lowercased()
             let filename = url.lastPathComponent
-            guard let path = SharedStore.saveAttachment(data, fileExtension: ext) else {
+            // Copy, never read: a one-hour recording is far past the memory
+            // budget of a share extension, but copying it costs nothing.
+            guard let path = SharedStore.copyAttachment(from: url, fileExtension: ext) else {
                 completion(nil)
                 return
             }

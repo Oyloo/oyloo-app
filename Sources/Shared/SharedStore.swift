@@ -64,6 +64,61 @@ public enum SharedStore {
         }
     }
 
+    /// Copy an already-on-disk attachment into the App Group container
+    /// WITHOUT loading it into memory. Share extensions are killed around
+    /// 120 MB, so reading a long recording with `Data(contentsOf:)` fails
+    /// where a copy succeeds; there is no size cap on this path.
+    /// Returns the path RELATIVE to the container, like `saveAttachment`.
+    public static func copyAttachment(from source: URL, fileExtension: String) -> String? {
+        guard let dir = attachmentsDirectory else { return nil }
+        let ext = fileExtension.isEmpty ? "bin" : fileExtension
+        let filename = "\(UUID().uuidString).\(ext)"
+        let destination = dir.appendingPathComponent(filename)
+        do {
+            try FileManager.default.copyItem(at: source, to: destination)
+            return "attachments/\(filename)"
+        } catch {
+            return nil
+        }
+    }
+
+    // MARK: - Shipped items
+
+    private static let shippedFileName = "shipped.txt"
+
+    private static var shippedURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
+            .appendingPathComponent(shippedFileName)
+    }
+
+    private static var shippedCache: Set<String>?
+
+    /// IDs already accepted by the sync target. Kept in a plain file rather
+    /// than rewriting the outbox, so shipping never risks the capture log.
+    public static func isShipped(_ id: UUID) -> Bool {
+        if shippedCache == nil {
+            let raw = shippedURL.flatMap { try? String(contentsOf: $0, encoding: .utf8) } ?? ""
+            shippedCache = Set(raw.split(separator: "\n").map(String.init))
+        }
+        return shippedCache?.contains(id.uuidString) ?? false
+    }
+
+    public static func markShipped(_ id: UUID) {
+        guard let url = shippedURL else { return }
+        shippedCache?.insert(id.uuidString)
+        guard let data = (id.uuidString + "\n").data(using: .utf8) else { return }
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: url.path) {
+            try? data.write(to: url, options: .atomic)
+            return
+        }
+        guard let handle = try? FileHandle(forWritingTo: url) else { return }
+        defer { try? handle.close() }
+        try? handle.seekToEnd()
+        try? handle.write(contentsOf: data)
+    }
+
     /// Resolve a relative attachment path back to an absolute URL on
     /// disk inside the App Group container.
     public static func resolveAttachment(_ relativePath: String) -> URL? {
