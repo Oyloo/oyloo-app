@@ -13,25 +13,21 @@ public enum SyncSettings {
     private static let baseKey = "sync.baseURL"
     private static let tokenKey = "sync.token"
 
-    private static var defaults: UserDefaults? {
-        UserDefaults(suiteName: SharedStore.appGroupID)
-    }
-
     /// User-entered base URL, always kept with a trailing slash.
     public static var baseURL: String {
-        get { defaults?.string(forKey: baseKey) ?? "" }
+        get { SharedDefaults.string(forKey: baseKey) ?? "" }
         set {
             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
             let normalised = trimmed.isEmpty || trimmed.hasSuffix("/") ? trimmed : trimmed + "/"
-            defaults?.set(normalised, forKey: baseKey)
+            SharedDefaults.set(normalised, forKey: baseKey)
         }
     }
 
     /// Optional bearer token, for endpoints behind a real login rather than a
     /// secret path segment.
     public static var token: String {
-        get { defaults?.string(forKey: tokenKey) ?? "" }
-        set { defaults?.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: tokenKey) }
+        get { SharedDefaults.string(forKey: tokenKey) ?? "" }
+        set { SharedDefaults.set(newValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: tokenKey) }
     }
 
     public static var isConfigured: Bool {

@@ -14,7 +14,13 @@ settings:
     MARKETING_VERSION: "0.1"
     GENERATE_INFOPLIST_FILE: NO
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    DEVELOPMENT_TEAM: "69F5S886AL"
+    # Signing team. This one is a free provisioning team: profiles last 7
+    # days and App Groups are not issued at all, so shared settings and the
+    # token live in a shared keychain item (see SharedDefaults) and the share
+    # extension uploads the capture itself. With a paid membership, put the
+    # paid team here and restore com.apple.security.application-groups in
+    # both *.entitlements files.
+    DEVELOPMENT_TEAM: "8QM66BKC25"
     CODE_SIGN_STYLE: Automatic
 
 targets:

@@ -151,8 +151,7 @@ public enum OAuthClient {
     /// one avoids a new registration row on every sign-in.
     private static func registerClient(metadata: Metadata) async throws -> String {
         let key = "oauth.clientID." + SyncSettings.baseURL
-        let defaults = UserDefaults(suiteName: SharedStore.appGroupID)
-        if let existing = defaults?.string(forKey: key), !existing.isEmpty { return existing }
+        if let existing = SharedDefaults.string(forKey: key), !existing.isEmpty { return existing }
         guard let endpoint = metadata.registration else {
             throw Failure.registration("server offers no dynamic registration")
         }
@@ -172,7 +171,7 @@ public enum OAuthClient {
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let id = json["client_id"] as? String
         else { throw Failure.registration(body(data)) }
-        defaults?.set(id, forKey: key)
+        SharedDefaults.set(id, forKey: key)
         return id
     }
 

@@ -105,9 +105,23 @@ final class ShareViewController: UIViewController {
     }
 
     private func commitAndComplete(item: SharedItem, vault: Vault) {
-        SharedStore.append(item.with(vaultKey: vault.key))
+        let stamped = item.with(vaultKey: vault.key)
+        SharedStore.append(stamped)
         ShareLog.write("committed to vault key=\(vault.key) name=\(vault.displayName)")
-        complete()
+
+        // Без App Group приложение этот захват никогда не увидит: контейнер у
+        // расширения свой. Значит отправлять должно само расширение, и только
+        // после ответа сервера можно закрывать лист. С App Group ничего ждать
+        // не надо: отправит приложение при следующем открытии.
+        guard !SharedDefaults.usesAppGroup, SyncSettings.isConfigured else {
+            complete()
+            return
+        }
+        Task {
+            let report = await Uploader.syncAll()
+            ShareLog.write("uploaded from extension: \(report.summary)")
+            await MainActor.run { self.complete() }
+        }
     }
 
     private func complete() {

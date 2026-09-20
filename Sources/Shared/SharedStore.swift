@@ -7,6 +7,18 @@ import Foundation
 public enum SharedStore {
     public static let appGroupID = "group.com.oyloo.lifeos"
 
+    /// Где живут outbox и вложения.
+    ///
+    /// App Group, когда он выдан (платная команда): тогда расширение и
+    /// приложение видят одни и те же файлы. Иначе собственный контейнер
+    /// процесса: на бесплатной команде App Group не выдаётся вовсе, и
+    /// расширение в этом случае отправляет захват само, не передавая его
+    /// приложению (см. ShareViewController).
+    public static var containerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+    }
+
     /// Pre-refactor single outbox written before the picker landed.
     /// Migrated into per-vault files on first read; legacy file is
     /// removed afterwards.
@@ -21,15 +33,11 @@ public enum SharedStore {
     }
 
     public static func outboxURL(forKey key: String) -> URL? {
-        FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appendingPathComponent(outboxFileName(forKey: key))
+        containerURL?.appendingPathComponent(outboxFileName(forKey: key))
     }
 
     private static var legacyOutboxURL: URL? {
-        FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appendingPathComponent(legacyOutboxFileName)
+        containerURL?.appendingPathComponent(legacyOutboxFileName)
     }
 
     /// Hard cap on attachment size to stay under iOS share-extension
@@ -38,8 +46,7 @@ public enum SharedStore {
 
     /// Lazy directory for binary attachments under the App Group container.
     public static var attachmentsDirectory: URL? {
-        guard let group = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID) else { return nil }
+        guard let group = containerURL else { return nil }
         let dir = group.appendingPathComponent("attachments", isDirectory: true)
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -87,9 +94,7 @@ public enum SharedStore {
     private static let shippedFileName = "shipped.txt"
 
     private static var shippedURL: URL? {
-        FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appendingPathComponent(shippedFileName)
+        containerURL?.appendingPathComponent(shippedFileName)
     }
 
     private static var shippedCache: Set<String>?
@@ -122,9 +127,7 @@ public enum SharedStore {
     /// Resolve a relative attachment path back to an absolute URL on
     /// disk inside the App Group container.
     public static func resolveAttachment(_ relativePath: String) -> URL? {
-        FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID)?
-            .appendingPathComponent(relativePath)
+        containerURL?.appendingPathComponent(relativePath)
     }
 
     /// Delete the attachment file (if any) for an item. Called from
@@ -172,8 +175,7 @@ public enum SharedStore {
     /// added vaults are picked up automatically without changes here.
     public static func readAll() -> [SharedItem] {
         migrateLegacyOutboxIfPresent()
-        guard let container = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID),
+        guard let container = containerURL,
               let entries = try? FileManager.default.contentsOfDirectory(
                   at: container,
                   includingPropertiesForKeys: nil
@@ -219,8 +221,7 @@ public enum SharedStore {
             replaceAll(items, forVaultKey: key)
         }
         let activeKeys = Set(grouped.keys)
-        guard let container = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID),
+        guard let container = containerURL,
               let entries = try? FileManager.default.contentsOfDirectory(
                   at: container,
                   includingPropertiesForKeys: nil

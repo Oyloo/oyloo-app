@@ -11,11 +11,9 @@ import SwiftUI
 public final class VaultStore {
     public private(set) var vaults: [Vault] = []
 
-    private let defaults: UserDefaults
     private let storageKey = "oyloo.vaults.v1"
 
-    public init(appGroupID: String = SharedStore.appGroupID) {
-        self.defaults = UserDefaults(suiteName: appGroupID) ?? .standard
+    public init() {
         self.vaults = loadVaults()
     }
 
@@ -46,7 +44,7 @@ public final class VaultStore {
     }
 
     private func loadVaults() -> [Vault] {
-        guard let data = defaults.data(forKey: storageKey) else { return [] }
+        guard let data = SharedDefaults.data(forKey: storageKey) else { return [] }
         let decoder = JSONDecoder()
         return (try? decoder.decode([Vault].self, from: data)) ?? []
     }
@@ -54,7 +52,7 @@ public final class VaultStore {
     private func save() {
         let encoder = JSONEncoder()
         if let data = try? encoder.encode(vaults) {
-            defaults.set(data, forKey: storageKey)
+            SharedDefaults.set(data, forKey: storageKey)
         }
     }
 }
