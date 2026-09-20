@@ -52,7 +52,7 @@ public enum Uploader {
     private static func ship(_ item: SharedItem) async throws {
         if let path = item.attachmentPath, let file = SharedStore.resolveAttachment(path) {
             let name = filename(for: item, fallbackExtension: file.pathExtension)
-            try await put(fileURL: file, as: name, contentType: item.mimeType)
+            try await put(fileURL: file, as: name, vault: item.vaultKey, contentType: item.mimeType)
             return
         }
         guard item.text != nil || item.url != nil else { throw UploadError.nothingToSend }
@@ -61,31 +61,42 @@ public enum Uploader {
         encoder.outputFormatting = .prettyPrinted
         let data = try encoder.encode(item)
         try await put(data: data, as: filename(for: item, fallbackExtension: "json"),
-                      contentType: "application/json")
+                      vault: item.vaultKey, contentType: "application/json")
     }
 
-    private static func put(fileURL: URL, as name: String, contentType: String?) async throws {
-        var request = try makeRequest(name: name, contentType: contentType)
+    private static func put(fileURL: URL, as name: String, vault: String, contentType: String?) async throws {
+        var request = try await makeRequest(name: name, vault: vault, contentType: contentType)
         request.httpMethod = "PUT"
         let (_, response) = try await URLSession.shared.upload(for: request, fromFile: fileURL)
         try check(response)
     }
 
-    private static func put(data: Data, as name: String, contentType: String?) async throws {
-        var request = try makeRequest(name: name, contentType: contentType)
+    private static func put(data: Data, as name: String, vault: String, contentType: String?) async throws {
+        var request = try await makeRequest(name: name, vault: vault, contentType: contentType)
         request.httpMethod = "PUT"
         let (_, response) = try await URLSession.shared.upload(for: request, from: data)
         try check(response)
     }
 
-    private static func makeRequest(name: String, contentType: String?) throws -> URLRequest {
-        guard let url = SyncSettings.uploadURL(filename: name) else { throw UploadError.noEndpoint }
+    private static func makeRequest(
+        name: String, vault: String, contentType: String?
+    ) async throws -> URLRequest {
+        guard let url = SyncSettings.uploadURL(filename: name, vault: vault) else {
+            throw UploadError.noEndpoint
+        }
         var request = URLRequest(url: url)
         request.timeoutInterval = 600
         if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
-        let token = SyncSettings.token
-        if !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        // Browser sign-in first: on a family device each person ships under
+        // their own account. A token typed into settings stays supported for
+        // plainer endpoints that speak no OAuth.
+        if let bearer = try? await OAuthClient.validAccessToken() {
+            request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
+        } else {
+            let token = SyncSettings.token
+            if !token.isEmpty {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
         }
         return request
     }

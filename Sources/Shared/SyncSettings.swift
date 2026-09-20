@@ -4,10 +4,11 @@ import Foundation
 /// runtime and stored in the App Group, so nothing about any particular
 /// deployment lives in this repo.
 ///
-/// The receiving side is expected to accept `PUT <base>upload?name=<filename>`
-/// with the raw file as the request body and answer 2xx on success. A secret
-/// path segment inside the base URL is the simplest way to keep a private
-/// endpoint private; anything stronger belongs behind a real login.
+/// The receiving side is expected to accept
+/// `PUT <base>api/uploads?name=<filename>&vault=<vault>` with the raw file as
+/// the request body and answer 2xx on success. Authentication is a bearer
+/// token: from browser sign-in when the server speaks OAuth (see
+/// `OAuthClient`), or a token typed into settings for a plainer endpoint.
 public enum SyncSettings {
     private static let baseKey = "sync.baseURL"
     private static let tokenKey = "sync.token"
@@ -38,11 +39,14 @@ public enum SyncSettings {
         return true
     }
 
-    /// Upload target for one file name.
-    public static func uploadURL(filename: String) -> URL? {
+    /// Upload target for one file.
+    public static func uploadURL(filename: String, vault: String) -> URL? {
         guard isConfigured,
-              var components = URLComponents(string: baseURL + "upload") else { return nil }
-        components.queryItems = [URLQueryItem(name: "name", value: filename)]
+              var components = URLComponents(string: baseURL + "api/uploads") else { return nil }
+        components.queryItems = [
+            URLQueryItem(name: "name", value: filename),
+            URLQueryItem(name: "vault", value: vault)
+        ]
         return components.url
     }
 }

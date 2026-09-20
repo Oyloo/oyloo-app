@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 /// Where captures are shipped. Values live on the device only; this repo
@@ -7,6 +8,8 @@ struct SyncSettingsView: View {
     @State private var token = SyncSettings.token
     @State private var isSending = false
     @State private var status: String?
+    @State private var isSignedIn = OAuthClient.isSignedIn
+    @State private var signInError: String?
 
     var body: some View {
         Form {
@@ -25,6 +28,35 @@ struct SyncSettingsView: View {
                 Text("Server")
             } footer: {
                 Text("Each capture is sent as PUT <server>upload?name=<filename> with the file as the body. A token, when set, travels as a bearer header.")
+            }
+
+            Section {
+                if isSignedIn {
+                    HStack {
+                        Label("Signed in", systemImage: "checkmark.circle")
+                        Spacer()
+                        Button("Sign out") {
+                            OAuthClient.signOut()
+                            isSignedIn = false
+                        }
+                    }
+                } else {
+                    Button {
+                        Task { await signIn() }
+                    } label: {
+                        Label("Sign in with browser", systemImage: "person.badge.key")
+                    }
+                    .disabled(!SyncSettings.isConfigured)
+                }
+                if let signInError {
+                    Text(signInError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            } header: {
+                Text("Account")
+            } footer: {
+                Text("Each person signs in with their own account, so captures arrive under the right name. Servers without sign-in can use the token above instead.")
             }
 
             Section {
@@ -50,6 +82,19 @@ struct SyncSettingsView: View {
             }
         }
         .navigationTitle("Sync")
+    }
+
+    private func signIn() async {
+        signInError = nil
+        do {
+            let anchor = UIApplication.shared.connectedScenes
+                .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+                .first
+            try await OAuthClient.signIn(anchor: anchor)
+            isSignedIn = true
+        } catch {
+            signInError = error.localizedDescription
+        }
     }
 
     private func send() async {
