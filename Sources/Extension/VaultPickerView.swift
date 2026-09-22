@@ -7,6 +7,7 @@ struct SharePreviewModel {
     let title: String
     let detail: String?
     let symbolName: String
+    var isAudio = false
 
     static let placeholder = SharePreviewModel(
         title: "Reading share…",
@@ -15,6 +16,14 @@ struct SharePreviewModel {
     )
 
     static func from(_ item: SharedItem) -> SharePreviewModel {
+        if item.isAudio {
+            return SharePreviewModel(
+                title: item.title ?? "Recording",
+                detail: item.mimeType,
+                symbolName: "waveform",
+                isAudio: true
+            )
+        }
         if item.isImage {
             return SharePreviewModel(
                 title: item.title ?? "Image",
@@ -59,9 +68,12 @@ struct SharePreviewModel {
 struct VaultPickerView: View {
     let preview: SharePreviewModel
     let isProcessing: Bool
-    let onSelect: (Vault) -> Void
+    let onSelect: (Vault, Bool) -> Void
     let onCancel: () -> Void
     @Bindable var store: VaultStore
+    /// Recordings can be sent on as a podcast episode; the server keeps it a
+    /// private draft first, so this is a wish, not an instant publication.
+    @State private var publish = false
 
     var body: some View {
         NavigationStack {
@@ -91,6 +103,7 @@ struct VaultPickerView: View {
     private var portraitLayout: some View {
         VStack(alignment: .leading, spacing: 20) {
             previewChip
+            publishToggle
             if store.vaults.isEmpty {
                 emptyState
             } else {
@@ -107,6 +120,7 @@ struct VaultPickerView: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 12) {
                 previewChip
+                publishToggle
                 if isProcessing { processingHint }
                 Spacer(minLength: 0)
             }
@@ -148,6 +162,17 @@ struct VaultPickerView: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 14))
     }
 
+    @ViewBuilder
+    private var publishToggle: some View {
+        if preview.isAudio {
+            Toggle(isOn: $publish) {
+                Label("Podcast episode", systemImage: "mic.fill")
+            }
+            .padding(12)
+            .glassEffect(.regular, in: .rect(cornerRadius: 14))
+        }
+    }
+
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "tray")
@@ -175,7 +200,7 @@ struct VaultPickerView: View {
     }
 
     private func vaultButton(_ vault: Vault) -> some View {
-        Button { onSelect(vault) } label: {
+        Button { onSelect(vault, preview.isAudio && publish) } label: {
             VStack(spacing: 10) {
                 Image(systemName: vault.symbolName)
                     .font(.system(size: 36))

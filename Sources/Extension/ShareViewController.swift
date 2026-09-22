@@ -21,6 +21,7 @@ final class ShareViewController: UIViewController {
     /// arrival.
     private var stagedItem: SharedItem?
     private var pendingVault: Vault?
+    private var pendingPublish = false
 
     /// `false` until extraction completes — drives the picker's
     /// "Reading share…" hint and disables the buttons.
@@ -70,7 +71,7 @@ final class ShareViewController: UIViewController {
         return VaultPickerView(
             preview: preview,
             isProcessing: isExtracting,
-            onSelect: { [weak self] vault in self?.handleSelect(vault: vault) },
+            onSelect: { [weak self] vault, publish in self?.handleSelect(vault: vault, publish: publish) },
             onCancel: { [weak self] in self?.cancel() },
             store: vaultStore
         )
@@ -78,7 +79,8 @@ final class ShareViewController: UIViewController {
 
     // MARK: - Picker callbacks
 
-    private func handleSelect(vault: Vault) {
+    private func handleSelect(vault: Vault, publish: Bool) {
+        pendingPublish = publish
         if let item = stagedItem {
             commitAndComplete(item: item, vault: vault)
             return
@@ -105,7 +107,7 @@ final class ShareViewController: UIViewController {
     }
 
     private func commitAndComplete(item: SharedItem, vault: Vault) {
-        let stamped = item.with(vaultKey: vault.key)
+        let stamped = item.with(vaultKey: vault.key, publish: pendingPublish && item.isAudio)
         SharedStore.append(stamped)
         ShareLog.write("committed to vault key=\(vault.key) name=\(vault.displayName)")
 

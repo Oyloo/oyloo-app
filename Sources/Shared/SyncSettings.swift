@@ -5,7 +5,7 @@ import Foundation
 /// deployment lives in this repo.
 ///
 /// The receiving side is expected to accept
-/// `PUT <base>api/uploads?name=<filename>&vault=<vault>` with the raw file as
+/// `PUT <base>api/uploads?name=<filename>&vault=<vault>[&podcast=1]` with the raw file as
 /// the request body and answer 2xx on success. Authentication is a bearer
 /// token: from browser sign-in when the server speaks OAuth (see
 /// `OAuthClient`), or a token typed into settings for a plainer endpoint.
@@ -36,13 +36,14 @@ public enum SyncSettings {
     }
 
     /// Upload target for one file.
-    public static func uploadURL(filename: String, vault: String) -> URL? {
+    public static func uploadURL(filename: String, vault: String, publish: Bool = false) -> URL? {
         guard isConfigured,
               var components = URLComponents(string: baseURL + "api/uploads") else { return nil }
         components.queryItems = [
             URLQueryItem(name: "name", value: filename),
             URLQueryItem(name: "vault", value: vault)
         ]
+        if publish { components.queryItems?.append(URLQueryItem(name: "podcast", value: "1")) }
         return components.url
     }
 }

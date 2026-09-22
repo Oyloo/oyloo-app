@@ -52,7 +52,8 @@ public enum Uploader {
     private static func ship(_ item: SharedItem) async throws {
         if let path = item.attachmentPath, let file = SharedStore.resolveAttachment(path) {
             let name = filename(for: item, fallbackExtension: file.pathExtension)
-            try await put(fileURL: file, as: name, vault: item.vaultKey, contentType: item.mimeType)
+            try await put(fileURL: file, as: name, vault: item.vaultKey, contentType: item.mimeType,
+                          publish: item.publish)
             return
         }
         guard item.text != nil || item.url != nil else { throw UploadError.nothingToSend }
@@ -64,8 +65,10 @@ public enum Uploader {
                       vault: item.vaultKey, contentType: "application/json")
     }
 
-    private static func put(fileURL: URL, as name: String, vault: String, contentType: String?) async throws {
-        var request = try await makeRequest(name: name, vault: vault, contentType: contentType)
+    private static func put(fileURL: URL, as name: String, vault: String, contentType: String?,
+                            publish: Bool = false) async throws {
+        var request = try await makeRequest(name: name, vault: vault, contentType: contentType,
+                                            publish: publish)
         request.httpMethod = "PUT"
         let (_, response) = try await URLSession.shared.upload(for: request, fromFile: fileURL)
         try check(response)
@@ -79,9 +82,9 @@ public enum Uploader {
     }
 
     private static func makeRequest(
-        name: String, vault: String, contentType: String?
+        name: String, vault: String, contentType: String?, publish: Bool = false
     ) async throws -> URLRequest {
-        guard let url = SyncSettings.uploadURL(filename: name, vault: vault) else {
+        guard let url = SyncSettings.uploadURL(filename: name, vault: vault, publish: publish) else {
             throw UploadError.noEndpoint
         }
         var request = URLRequest(url: url)

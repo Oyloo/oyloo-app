@@ -22,6 +22,9 @@ public struct SharedItem: Codable, Identifiable, Hashable {
     /// etc.) — drives the row renderer.
     public let mimeType: String?
     public let sharedAt: Date
+    /// The user asked for this capture to become a podcast episode. The
+    /// server decides what that means; the app only carries the wish.
+    public let publish: Bool
 
     public init(
         vaultKey: String = SharedStore.defaultVaultKey,
@@ -29,7 +32,8 @@ public struct SharedItem: Codable, Identifiable, Hashable {
         title: String? = nil,
         text: String? = nil,
         attachmentPath: String? = nil,
-        mimeType: String? = nil
+        mimeType: String? = nil,
+        publish: Bool = false
     ) {
         self.init(
             id: UUID(),
@@ -39,7 +43,8 @@ public struct SharedItem: Codable, Identifiable, Hashable {
             text: text,
             attachmentPath: attachmentPath,
             mimeType: mimeType,
-            sharedAt: Date()
+            sharedAt: Date(),
+            publish: publish
         )
     }
 
@@ -51,7 +56,8 @@ public struct SharedItem: Codable, Identifiable, Hashable {
         text: String?,
         attachmentPath: String?,
         mimeType: String?,
-        sharedAt: Date
+        sharedAt: Date,
+        publish: Bool
     ) {
         self.id = id
         self.vaultKey = vaultKey
@@ -61,10 +67,11 @@ public struct SharedItem: Codable, Identifiable, Hashable {
         self.attachmentPath = attachmentPath
         self.mimeType = mimeType
         self.sharedAt = sharedAt
+        self.publish = publish
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, vault, vaultKey, url, title, text, attachmentPath, mimeType, sharedAt
+        case id, vault, vaultKey, url, title, text, attachmentPath, mimeType, sharedAt, publish
     }
 
     public init(from decoder: Decoder) throws {
@@ -88,7 +95,8 @@ public struct SharedItem: Codable, Identifiable, Hashable {
             text: try c.decodeIfPresent(String.self, forKey: .text),
             attachmentPath: try c.decodeIfPresent(String.self, forKey: .attachmentPath),
             mimeType: try c.decodeIfPresent(String.self, forKey: .mimeType),
-            sharedAt: try c.decode(Date.self, forKey: .sharedAt)
+            sharedAt: try c.decode(Date.self, forKey: .sharedAt),
+            publish: try c.decodeIfPresent(Bool.self, forKey: .publish) ?? false
         )
     }
 
@@ -102,6 +110,7 @@ public struct SharedItem: Codable, Identifiable, Hashable {
         try c.encodeIfPresent(attachmentPath, forKey: .attachmentPath)
         try c.encodeIfPresent(mimeType, forKey: .mimeType)
         try c.encode(sharedAt, forKey: .sharedAt)
+        if publish { try c.encode(publish, forKey: .publish) }
         // Note: legacy `.vault` key intentionally omitted from output —
         // we read both formats but only write the new one.
     }
@@ -109,7 +118,7 @@ public struct SharedItem: Codable, Identifiable, Hashable {
     /// Returns a copy with `vaultKey` replaced. Used by the share
     /// extension to stamp the user's picker choice onto an item that
     /// was extracted before the choice was made.
-    public func with(vaultKey: String) -> SharedItem {
+    public func with(vaultKey: String, publish: Bool = false) -> SharedItem {
         SharedItem(
             id: self.id,
             vaultKey: vaultKey,
@@ -118,10 +127,12 @@ public struct SharedItem: Codable, Identifiable, Hashable {
             text: self.text,
             attachmentPath: self.attachmentPath,
             mimeType: self.mimeType,
-            sharedAt: self.sharedAt
+            sharedAt: self.sharedAt,
+            publish: publish
         )
     }
 
+    public var isAudio: Bool { (mimeType ?? "").hasPrefix("audio/") }
     public var isImage: Bool { (mimeType ?? "").hasPrefix("image/") }
     public var isFile: Bool { attachmentPath != nil && !isImage }
     public var isText: Bool { text != nil }
