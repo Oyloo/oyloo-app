@@ -5,6 +5,10 @@ import QuickLook
 struct ContentView: View {
     @Bindable var vaultStore: VaultStore
     @State private var items: [SharedItem] = []
+    /// Captures the server holds. Without an App Group the share extension
+    /// uploads on its own and its files never reach this process, so the
+    /// server's list is the only complete history of what was shared.
+    @State private var feed = CaptureFeed()
     @State private var selectedVaultKey: String?
     @State private var settingsSelected = false
     @Environment(\.scenePhase) private var scenePhase
@@ -26,11 +30,13 @@ struct ContentView: View {
             ensureSelection()
             reload()
         }
+        .task { await feed.refresh() }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 vaultStore.reload()
                 ensureSelection()
                 reload()
+                Task { await feed.refresh() }
             }
         }
         .onChange(of: vaultStore.vaults.map(\.key)) { _, _ in
@@ -170,21 +176,28 @@ struct ContentView: View {
 
     @ViewBuilder
     private func vaultTab(for vault: Vault) -> some View {
-        let groups = groupedItems(for: vault.key)
+        let groups = groupedEntries(for: vault.key)
         NavigationStack {
             Group {
                 if groups.isEmpty {
-                    ContentUnavailableView(
-                        "No \(vault.displayName.lowercased()) shares yet",
-                        systemImage: vault.symbolName,
-                        description: Text("Share a URL, photo, file, or text from any app and pick \(vault.displayName) in the picker.")
-                    )
+                    ContentUnavailableView {
+                        Label("No \(vault.displayName.lowercased()) shares yet", systemImage: vault.symbolName)
+                    } description: {
+                        Text("Share a URL, photo, file, or text from any app and pick \(vault.displayName) in the picker.")
+                    } actions: {
+                        feedStatus
+                    }
                 } else {
                     List {
+                        if case .failed = feed.state {
+                            Section { feedStatus }
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
                         ForEach(groups, id: \.day) { group in
                             Section(group.header) {
-                                ForEach(group.items) { item in
-                                    ItemRow(item: item)
+                                ForEach(group.entries) { entry in
+                                    entryRow(entry)
                                         .listRowBackground(Color.clear)
                                         .listRowSeparator(.hidden)
                                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -197,7 +210,10 @@ struct ContentView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .refreshable { reload() }
+                    .refreshable {
+                        reload()
+                        await feed.refresh()
+                    }
                 }
             }
             .navigationTitle(vault.displayName)
@@ -212,21 +228,77 @@ struct ContentView: View {
         }
     }
 
+    /// One row of the list: either still in this device's outbox, or already
+    /// on the server. Both carry a date, which is all the grouping needs.
+    private enum FeedEntry: Identifiable {
+        case local(SharedItem)
+        case remote(ServerCapture)
+
+        var id: String {
+            switch self {
+            case .local(let item): "local-\(item.id.uuidString)"
+            case .remote(let capture): "remote-\(capture.id)"
+            }
+        }
+
+        var date: Date {
+            switch self {
+            case .local(let item): item.sharedAt
+            case .remote(let capture): capture.createdAt
+            }
+        }
+
+        var localItem: SharedItem? {
+            if case .local(let item) = self { return item }
+            return nil
+        }
+    }
+
     private struct DayGroup: Identifiable {
         let day: Date
         let header: String
-        let items: [SharedItem]
+        let entries: [FeedEntry]
         var id: Date { day }
     }
 
-    private func groupedItems(for vaultKey: String) -> [DayGroup] {
+    private func groupedEntries(for vaultKey: String) -> [DayGroup] {
         let calendar = Calendar.current
-        let sorted = items
+        let local = items
             .filter { $0.vaultKey == vaultKey }
-            .sorted(by: { $0.sharedAt > $1.sharedAt })
-        let grouped = Dictionary(grouping: sorted) { calendar.startOfDay(for: $0.sharedAt) }
+            .map(FeedEntry.local)
+        let remote = feed.captures(forVaultKey: vaultKey).map(FeedEntry.remote)
+        let sorted = (local + remote).sorted(by: { $0.date > $1.date })
+        let grouped = Dictionary(grouping: sorted) { calendar.startOfDay(for: $0.date) }
         return grouped.keys.sorted(by: >).map { day in
-            DayGroup(day: day, header: dayHeader(for: day), items: grouped[day] ?? [])
+            DayGroup(day: day, header: dayHeader(for: day), entries: grouped[day] ?? [])
+        }
+    }
+
+    @ViewBuilder
+    private func entryRow(_ entry: FeedEntry) -> some View {
+        switch entry {
+        case .local(let item): ItemRow(item: item)
+        case .remote(let capture): ServerCaptureRow(capture: capture)
+        }
+    }
+
+    /// Why the server half of the list might be missing. Silent while it
+    /// loads for the first time and once it has loaded.
+    @ViewBuilder
+    private var feedStatus: some View {
+        switch feed.state {
+        case .idle, .loading, .loaded:
+            EmptyView()
+        case .failed(let reason):
+            VStack(spacing: 8) {
+                Text(reason)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Try again") { Task { await feed.refresh() } }
+                    .font(.footnote)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -239,8 +311,11 @@ struct ContentView: View {
         return formatter.string(from: date)
     }
 
+    /// Swipe-to-delete removes from this device's outbox only; a capture the
+    /// server already holds is not this screen's to destroy.
     private func delete(from group: DayGroup, offsets: IndexSet) {
-        let removed = offsets.map { group.items[$0] }
+        let removed = offsets.compactMap { group.entries[$0].localItem }
+        guard !removed.isEmpty else { return }
         for item in removed { SharedStore.deleteAttachment(of: item) }
         let removedIDs = Set(removed.map { $0.id })
         items.removeAll { removedIDs.contains($0.id) }
@@ -424,9 +499,21 @@ private struct ItemRow: View {
                         .lineLimit(2)
                 }
                 bodyContent
-                Text(item.sharedAt, style: .time)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 6) {
+                    Text(item.sharedAt, style: .time)
+                    // An item stays in the outbox after it ships, so the
+                    // shipped list decides the label; the server's own copy
+                    // appears as its own row.
+                    if SharedStore.isShipped(item.id) {
+                        Label("Sent", systemImage: "checkmark.circle")
+                            .labelStyle(.titleAndIcon)
+                    } else {
+                        Label("Waiting to send", systemImage: "arrow.up.circle")
+                            .labelStyle(.titleAndIcon)
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             }
             Spacer(minLength: 0)
         }
@@ -497,6 +584,68 @@ private struct ItemRow: View {
         if mime.contains("word") || mime.contains("document") { return "doc.text" }
         if mime.contains("sheet") || mime.contains("excel") { return "tablecells" }
         return "doc"
+    }
+}
+
+/// A capture the server already holds. Its file lives there, not here, so the
+/// row shows what the server knows and offers no preview or delete.
+private struct ServerCaptureRow: View {
+    let capture: ServerCapture
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+                .frame(width: 40, height: 40)
+
+            VStack(alignment: .leading, spacing: 4) {
+                if let title = capture.title, !title.isEmpty {
+                    Text(title)
+                        .font(.callout)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                }
+                HStack(spacing: 6) {
+                    Text(capture.createdAt, style: .time)
+                    Label("On the server", systemImage: "checkmark.icloud")
+                        .labelStyle(.titleAndIcon)
+                    if capture.podcast == true {
+                        Label("Podcast", systemImage: "mic")
+                            .labelStyle(.titleAndIcon)
+                    }
+                    if let transcript = transcriptLabel {
+                        Text(transcript)
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+        .contentShape(.rect(cornerRadius: 14))
+    }
+
+    private var icon: String {
+        guard let mime = capture.mimeType else { return "doc" }
+        if mime.hasPrefix("audio/") { return "waveform" }
+        if mime.hasPrefix("video/") { return "film" }
+        if mime.hasPrefix("image/") { return "photo" }
+        if mime.contains("pdf") { return "doc.richtext" }
+        return "doc"
+    }
+
+    /// Only audio is transcribed, so the state is noise on anything else.
+    private var transcriptLabel: String? {
+        guard capture.isAudio, let state = capture.transcriptState else { return nil }
+        switch state {
+        case "done": return "Transcribed"
+        case "pending": return "Transcribing…"
+        case "failed": return "Transcript failed"
+        default: return nil
+        }
     }
 }
 
