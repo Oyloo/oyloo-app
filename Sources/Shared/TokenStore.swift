@@ -38,13 +38,19 @@ public enum TokenStore {
         SecItemAdd(q as CFDictionary, nil)
     }
 
+    /// OSStatus of the most recent load in this process, for diagnostics:
+    /// -25300 (not found) in the extension while the app is signed in means
+    /// the two processes are not reading the same keychain group.
+    public private(set) static var lastLoadStatus: OSStatus = errSecSuccess
+
     public static func load(for account: String) -> Tokens? {
         var q = query(for: account)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess,
-              let data = out as? Data else { return nil }
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        lastLoadStatus = status
+        guard status == errSecSuccess, let data = out as? Data else { return nil }
         return try? JSONDecoder().decode(Tokens.self, from: data)
     }
 

@@ -12,6 +12,10 @@ import os
 public final class VaultStore {
     public private(set) var vaults: [Vault] = []
 
+    /// Keychain status of the last load, for the share extension's
+    /// diagnostics line; `errSecSuccess` when the App Group backing is used.
+    public private(set) var lastLoadStatus: OSStatus = errSecSuccess
+
     private let storageKey = "oyloo.vaults.v1"
 
     public init() {
@@ -45,7 +49,9 @@ public final class VaultStore {
     }
 
     private func loadVaults() -> [Vault] {
-        guard let data = SharedDefaults.data(forKey: storageKey) else {
+        let data = SharedDefaults.data(forKey: storageKey)
+        lastLoadStatus = SharedDefaults.lastReadStatus
+        guard let data else {
             Diagnostics.storage.notice(
                 "vaults load process=\(Diagnostics.process, privacy: .public) result=absent"
             )

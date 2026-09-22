@@ -46,13 +46,29 @@ final class ShareViewController: UIViewController {
         // are not sharing storage, which the picker itself can only report as
         // "No vaults configured". Counts and flags only: vault names are the
         // user's, so they stay out of the public log.
+        // Token presence and the keychain status behind it: "not signed in"
+        // from the extension while the app is signed in is a keychain-group
+        // question, and only the status code answers it.
+        let tokens = TokenStore.load(for: SyncSettings.baseURL)
+        let summary = "vaults=\(vaultStore.vaults.count) "
+            + "vaultsReadStatus=\(vaultStore.lastLoadStatus) "
+            + "usesAppGroup=\(SharedDefaults.usesAppGroup) "
+            + "syncConfigured=\(SyncSettings.isConfigured) "
+            + "baseURLLength=\(SyncSettings.baseURL.count) "
+            + "tokenReadStatus=\(TokenStore.lastLoadStatus) "
+            + "tokenPresent=\(tokens != nil) "
+            + "refreshPresent=\(tokens?.refreshToken != nil) "
+            + "tokenFresh=\(tokens?.isFresh ?? false)"
         Diagnostics.share.notice(
-            """
-            share sheet opened process=\(Diagnostics.process, privacy: .public) \
-            vaults=\(self.vaultStore.vaults.count, privacy: .public) \
-            usesAppGroup=\(SharedDefaults.usesAppGroup, privacy: .public) \
-            syncConfigured=\(SyncSettings.isConfigured, privacy: .public)
-            """
+            "share sheet opened process=\(Diagnostics.process, privacy: .public) \(summary, privacy: .public)"
+        )
+        // Same line into shared storage for the app to report on its next
+        // launch (see SharedDefaults.lastShareDiagnosticsKey). If even this
+        // write is invisible to the app, the two processes do not share a
+        // keychain group at all, which is itself the answer.
+        SharedDefaults.set(
+            ISO8601DateFormatter().string(from: Date()) + " " + summary,
+            forKey: SharedDefaults.lastShareDiagnosticsKey
         )
         initialPreview = detectInitialPreview()
         presentPicker()
@@ -136,6 +152,11 @@ final class ShareViewController: UIViewController {
         Task {
             let report = await Uploader.syncAll()
             ShareLog.write("uploaded from extension: \(report.summary)")
+            // Relayed to the app's console like the share-sheet line above.
+            SharedDefaults.set(
+                ISO8601DateFormatter().string(from: Date()) + " " + report.diagnostics,
+                forKey: SharedDefaults.lastUploadDiagnosticsKey
+            )
             await MainActor.run { self.complete() }
         }
     }
@@ -204,7 +225,14 @@ final class ShareViewController: UIViewController {
             return { item in upstream(log(item)) }
         }
 
-        if let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.url.identifier) }) {
+        // A file URL conforms to public.url too, so a plain URL check would
+        // send every shared recording down the link branch: no attachment is
+        // copied, the item carries only a file:// path nobody else can read,
+        // and the upload has nothing to send. Files go to the file branch.
+        if let provider = providers.first(where: {
+            $0.hasItemConformingToTypeIdentifier(UTType.url.identifier)
+                && !$0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }) {
             ShareLog.write("dispatcher: URL")
             let siblings = providers.filter { $0 !== provider }
             extractURL(provider, siblingProviders: siblings, fallbackTitle: fallbackTitle, completion: wrap(completion))

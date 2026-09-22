@@ -15,8 +15,19 @@ public enum SharedStore {
     /// расширение в этом случае отправляет захват само, не передавая его
     /// приложению (см. ShareViewController).
     public static var containerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
-            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        if let group = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
+            return group
+        }
+        // Application Support does not exist in a fresh container, and the
+        // extension's container is fresh on every install: an outbox written
+        // there before anything created the directory vanished silently, so
+        // the upload that followed found nothing pending.
+        guard let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        else { return nil }
+        if !FileManager.default.fileExists(atPath: support.path) {
+            try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        }
+        return support
     }
 
     /// Pre-refactor single outbox written before the picker landed.
@@ -140,24 +151,46 @@ public enum SharedStore {
 
     /// Append an item to the outbox file matching its vault key.
     public static func append(_ item: SharedItem) {
-        guard let url = outboxURL(forKey: item.vaultKey) else { return }
+        guard let url = outboxURL(forKey: item.vaultKey) else {
+            Diagnostics.storage.error("outbox append process=\(Diagnostics.process, privacy: .public) result=no-container")
+            return
+        }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        guard var data = try? encoder.encode(item) else { return }
+        guard var data = try? encoder.encode(item) else {
+            Diagnostics.storage.error("outbox append process=\(Diagnostics.process, privacy: .public) result=encode-failed")
+            return
+        }
         data.append(0x0A)
 
         let fm = FileManager.default
-        if !fm.fileExists(atPath: url.path) {
-            try? data.write(to: url, options: .atomic)
-            return
-        }
-        guard let handle = try? FileHandle(forWritingTo: url) else { return }
-        defer { try? handle.close() }
         do {
-            try handle.seekToEnd()
-            try handle.write(contentsOf: data)
+            if !fm.fileExists(atPath: url.path) {
+                try data.write(to: url, options: .atomic)
+            } else {
+                let handle = try FileHandle(forWritingTo: url)
+                defer { try? handle.close() }
+                try handle.seekToEnd()
+                try handle.write(contentsOf: data)
+            }
+            Diagnostics.storage.notice(
+                """
+                outbox append process=\(Diagnostics.process, privacy: .public) result=ok \
+                bytes=\(data.count, privacy: .public) \
+                attachment=\(item.attachmentPath != nil, privacy: .public)
+                """
+            )
         } catch {
-            // Swallow — outbox is best-effort; the user can re-share.
+            // Best-effort by design (the user can re-share), but never silent:
+            // a dropped outbox line is the difference between a capture that
+            // reaches the server and one that does not.
+            Diagnostics.storage.error(
+                """
+                outbox append process=\(Diagnostics.process, privacy: .public) result=failed \
+                error=\(String(describing: type(of: error)), privacy: .public) \
+                detail=\(error.localizedDescription, privacy: .private)
+                """
+            )
         }
     }
 

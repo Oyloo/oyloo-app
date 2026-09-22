@@ -98,6 +98,17 @@ public enum SharedDefaults {
         ]
     }
 
+    /// Key under which the share extension leaves a one-line summary of its
+    /// last run (counts, flags and status codes only) for the app to report:
+    /// the extension's own system log is out of reach without a cable, the
+    /// app's console is not.
+    public static let lastShareDiagnosticsKey = "diag.lastShare"
+    /// Same relay for the outcome of the extension's own upload.
+    public static let lastUploadDiagnosticsKey = "diag.lastUpload"
+
+    /// OSStatus of the most recent keychain read in this process.
+    public private(set) static var lastReadStatus: OSStatus = errSecSuccess
+
     private static func keychainData(forKey key: String) -> Data? {
         announceBackend()
         var q = query(key)
@@ -105,19 +116,36 @@ public enum SharedDefaults {
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
         let status = SecItemCopyMatching(q as CFDictionary, &out)
+        lastReadStatus = status
         let data = status == errSecSuccess ? out as? Data : nil
         // errSecItemNotFound is ordinary (nothing stored yet); anything else,
         // above all errSecMissingEntitlement (-34018), means the two processes
-        // are not sharing a keychain group at all.
+        // are not sharing a keychain group at all. The access group the item
+        // actually landed in is the other half of that question: an item filed
+        // under the app's own identifier group is invisible to the extension
+        // even though both declare the shared group.
         Diagnostics.storage.notice(
             """
             keychain read process=\(Diagnostics.process, privacy: .public) \
             key=\(publicLabel(forKey: key), privacy: .public) \
             status=\(status, privacy: .public) \
-            bytes=\(data?.count ?? -1, privacy: .public)
+            bytes=\(data?.count ?? -1, privacy: .public) \
+            group=\(data == nil ? "-" : accessGroup(forKey: key), privacy: .public)
             """
         )
         return data
+    }
+
+    private static func accessGroup(forKey key: String) -> String {
+        var q = query(key)
+        q[kSecReturnAttributes as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess,
+              let attrs = out as? [String: Any],
+              let group = attrs[kSecAttrAccessGroup as String] as? String
+        else { return "?" }
+        return group
     }
 
     private static func setKeychainData(_ value: Data?, forKey key: String) {
