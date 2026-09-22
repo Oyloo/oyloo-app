@@ -63,11 +63,11 @@ public final class VaultStore {
             )
             return []
         }
+        // Count only: vault keys are user-chosen names.
         Diagnostics.storage.notice(
             """
             vaults load process=\(Diagnostics.process, privacy: .public) \
-            count=\(vaults.count, privacy: .public) \
-            keys=\(vaults.map(\.key).joined(separator: ","), privacy: .public)
+            count=\(vaults.count, privacy: .public)
             """
         )
         return vaults

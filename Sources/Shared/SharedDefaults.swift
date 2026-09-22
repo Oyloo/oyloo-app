@@ -40,7 +40,7 @@ public enum SharedDefaults {
             backend process=\(Diagnostics.process, privacy: .public) \
             usesAppGroup=\(container != nil, privacy: .public) \
             group=\(SharedStore.appGroupID, privacy: .public) \
-            container=\(container?.path ?? "nil", privacy: .public) \
+            container=\(container?.path ?? "nil", privacy: .private) \
             service=\(service, privacy: .public)
             """
         )
@@ -49,6 +49,14 @@ public enum SharedDefaults {
 
     private static func announceBackend() {
         _ = backendAnnounced
+    }
+
+    /// What the public log may say about a key. Most keys are fixed names
+    /// from this code base; the client-id cache key embeds the user's server
+    /// address, which is theirs to keep, so that tail is masked.
+    private static func publicLabel(forKey key: String) -> String {
+        let clientPrefix = "oauth.clientID."
+        return key.hasPrefix(clientPrefix) ? clientPrefix + "<server>" : key
     }
 
     // MARK: - Values
@@ -104,7 +112,8 @@ public enum SharedDefaults {
         Diagnostics.storage.notice(
             """
             keychain read process=\(Diagnostics.process, privacy: .public) \
-            key=\(key, privacy: .public) status=\(status, privacy: .public) \
+            key=\(publicLabel(forKey: key), privacy: .public) \
+            status=\(status, privacy: .public) \
             bytes=\(data?.count ?? -1, privacy: .public)
             """
         )
@@ -119,7 +128,8 @@ public enum SharedDefaults {
             Diagnostics.storage.notice(
                 """
                 keychain clear process=\(Diagnostics.process, privacy: .public) \
-                key=\(key, privacy: .public) status=\(deleted, privacy: .public)
+                key=\(publicLabel(forKey: key), privacy: .public) \
+                status=\(deleted, privacy: .public)
                 """
             )
             return
@@ -133,7 +143,8 @@ public enum SharedDefaults {
         Diagnostics.storage.notice(
             """
             keychain write process=\(Diagnostics.process, privacy: .public) \
-            key=\(key, privacy: .public) bytes=\(value.count, privacy: .public) \
+            key=\(publicLabel(forKey: key), privacy: .public) \
+            bytes=\(value.count, privacy: .public) \
             status=\(status, privacy: .public)
             """
         )

@@ -12,9 +12,10 @@ import os
 ///     # or, narrower:
 ///     idevicesyslog | grep com.oyloo.life
 ///
-/// Messages are marked `public` on purpose: these are vault names, key names
-/// and OSStatus codes, not captures or tokens. Nothing here logs a token, a
-/// capture body or a file the user shared.
+/// Only counts, flags, OSStatus codes and fixed key names are marked `public`.
+/// Anything the user typed or shared — vault names, titles, text, attachment
+/// paths, the server address — is `private` and shows as <private> without a
+/// logging profile. Nothing here logs a token or a capture body at all.
 public enum Diagnostics {
     public static let subsystem = "com.oyloo.life"
 

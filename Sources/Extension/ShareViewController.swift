@@ -2,6 +2,7 @@ import UIKit
 import SwiftUI
 import UniformTypeIdentifiers
 import LinkPresentation
+import os
 
 /// Share extension hosting a vault picker over a SwiftUI view. The
 /// host UIViewController extracts the share's richest single attachment
@@ -41,14 +42,17 @@ final class ShareViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         // First line of every share: how many vaults this process actually
-        // sees. An empty list here against a non-empty one in the app means
-        // the two are not sharing storage, which the picker itself can only
-        // report as "No vaults configured".
-        ShareLog.write(
-            "share sheet opened: vaults=\(vaultStore.vaults.count) "
-                + "keys=\(vaultStore.vaults.map(\.key).joined(separator: ",")) "
-                + "usesAppGroup=\(SharedDefaults.usesAppGroup) "
-                + "syncConfigured=\(SyncSettings.isConfigured)"
+        // sees. Zero here against a non-empty list in the app means the two
+        // are not sharing storage, which the picker itself can only report as
+        // "No vaults configured". Counts and flags only: vault names are the
+        // user's, so they stay out of the public log.
+        Diagnostics.share.notice(
+            """
+            share sheet opened process=\(Diagnostics.process, privacy: .public) \
+            vaults=\(self.vaultStore.vaults.count, privacy: .public) \
+            usesAppGroup=\(SharedDefaults.usesAppGroup, privacy: .public) \
+            syncConfigured=\(SyncSettings.isConfigured, privacy: .public)
+            """
         )
         initialPreview = detectInitialPreview()
         presentPicker()

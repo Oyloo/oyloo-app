@@ -19,9 +19,14 @@ public enum ShareLog {
     public static func write(_ message: String) {
         // Always to the system log: without an App Group (free team) `logURL`
         // is nil and every line below would be dropped silently, which is
-        // exactly when the diagnostics are needed.
+        // exactly when the diagnostics are needed. The message stays private:
+        // callers put shared titles, text and attachment paths in here, and
+        // those belong to the user, not to a sysdiagnose. It reads as
+        // <private> unless a logging profile is installed; lines meant for a
+        // plain `idevicesyslog` go through `Diagnostics` directly with only
+        // counts, flags and status codes marked public.
         Diagnostics.share.notice(
-            "\(Diagnostics.process, privacy: .public): \(message, privacy: .public)"
+            "\(Diagnostics.process, privacy: .public): \(message, privacy: .private)"
         )
         guard let url = logURL else { return }
         let timestamp = ISO8601DateFormatter().string(from: Date())
