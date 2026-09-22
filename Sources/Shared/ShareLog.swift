@@ -17,6 +17,12 @@ public enum ShareLog {
     }
 
     public static func write(_ message: String) {
+        // Always to the system log: without an App Group (free team) `logURL`
+        // is nil and every line below would be dropped silently, which is
+        // exactly when the diagnostics are needed.
+        Diagnostics.share.notice(
+            "\(Diagnostics.process, privacy: .public): \(message, privacy: .public)"
+        )
         guard let url = logURL else { return }
         let timestamp = ISO8601DateFormatter().string(from: Date())
         let line = "[\(timestamp)] \(message)\n"

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 
 /// Observable store for user-defined vaults, persisted in App Group
 /// `UserDefaults` so both the container app and the share extension see
@@ -44,15 +45,48 @@ public final class VaultStore {
     }
 
     private func loadVaults() -> [Vault] {
-        guard let data = SharedDefaults.data(forKey: storageKey) else { return [] }
+        guard let data = SharedDefaults.data(forKey: storageKey) else {
+            Diagnostics.storage.notice(
+                "vaults load process=\(Diagnostics.process, privacy: .public) result=absent"
+            )
+            return []
+        }
         let decoder = JSONDecoder()
-        return (try? decoder.decode([Vault].self, from: data)) ?? []
+        guard let vaults = try? decoder.decode([Vault].self, from: data) else {
+            // Stored bytes that do not decode look exactly like "no vaults" in
+            // the UI, so they get their own line.
+            Diagnostics.storage.error(
+                """
+                vaults load process=\(Diagnostics.process, privacy: .public) \
+                result=undecodable bytes=\(data.count, privacy: .public)
+                """
+            )
+            return []
+        }
+        Diagnostics.storage.notice(
+            """
+            vaults load process=\(Diagnostics.process, privacy: .public) \
+            count=\(vaults.count, privacy: .public) \
+            keys=\(vaults.map(\.key).joined(separator: ","), privacy: .public)
+            """
+        )
+        return vaults
     }
 
     private func save() {
         let encoder = JSONEncoder()
-        if let data = try? encoder.encode(vaults) {
-            SharedDefaults.set(data, forKey: storageKey)
+        guard let data = try? encoder.encode(vaults) else {
+            Diagnostics.storage.error(
+                "vaults save process=\(Diagnostics.process, privacy: .public) result=encode-failed"
+            )
+            return
         }
+        Diagnostics.storage.notice(
+            """
+            vaults save process=\(Diagnostics.process, privacy: .public) \
+            count=\(self.vaults.count, privacy: .public) bytes=\(data.count, privacy: .public)
+            """
+        )
+        SharedDefaults.set(data, forKey: storageKey)
     }
 }

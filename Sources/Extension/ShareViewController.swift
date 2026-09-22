@@ -40,6 +40,16 @@ final class ShareViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // First line of every share: how many vaults this process actually
+        // sees. An empty list here against a non-empty one in the app means
+        // the two are not sharing storage, which the picker itself can only
+        // report as "No vaults configured".
+        ShareLog.write(
+            "share sheet opened: vaults=\(vaultStore.vaults.count) "
+                + "keys=\(vaultStore.vaults.map(\.key).joined(separator: ",")) "
+                + "usesAppGroup=\(SharedDefaults.usesAppGroup) "
+                + "syncConfigured=\(SyncSettings.isConfigured)"
+        )
         initialPreview = detectInitialPreview()
         presentPicker()
         extractItem { [weak self] item in
