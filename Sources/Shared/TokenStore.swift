@@ -19,7 +19,7 @@ public enum TokenStore {
         }
     }
 
-    private static let service = "com.oyloo.lifeos.oauth"
+    private static let service = "com.oyloo.life.oauth"
 
     private static func query(for account: String) -> [String: Any] {
         [

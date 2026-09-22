@@ -1,6 +1,6 @@
 name: Oyloo
 options:
-  bundleIdPrefix: com.oyloo.lifeos
+  bundleIdPrefix: com.oyloo.life
   deploymentTarget:
     iOS: "26.0"
   developmentLanguage: en
@@ -32,7 +32,7 @@ targets:
       - Sources/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.lifeos.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.life.app
         INFOPLIST_FILE: Sources/App/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/App/App.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -49,7 +49,7 @@ targets:
       - Sources/Shared
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.lifeos.app.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.life.app.share
         INFOPLIST_FILE: Sources/Extension/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/Extension/Extension.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"

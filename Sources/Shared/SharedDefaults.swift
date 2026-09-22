@@ -16,7 +16,7 @@ import Security
 /// this app declares. That keeps the team prefix out of the source, where it
 /// would be both wrong across teams and a nuisance to maintain.
 public enum SharedDefaults {
-    private static let service = "com.oyloo.lifeos.shared"
+    private static let service = "com.oyloo.life.shared"
 
     /// True when the App Group container is really available.
     public static var usesAppGroup: Bool {

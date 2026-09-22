@@ -5,7 +5,7 @@ import Foundation
 /// key (`outbox-<key>.jsonl`); routing is by `item.vaultKey`. Future
 /// sync workers tail each file and ship to the matching backend.
 public enum SharedStore {
-    public static let appGroupID = "group.com.oyloo.lifeos"
+    public static let appGroupID = "group.com.oyloo.life"
 
     /// Где живут outbox и вложения.
     ///

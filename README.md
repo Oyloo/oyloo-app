@@ -38,7 +38,7 @@ managing vaults.
                                       └──────────────────────┘
 ```
 
-- **App Group**: `group.com.oyloo.lifeos` — both app and extension
+- **App Group**: `group.com.oyloo.life` — both app and extension
   read/write the same container.
 - **Vaults**: user-defined, persisted in App Group `UserDefaults`. Each
   vault has a stable lowercase slug (`key`), a display name, an SF
@@ -59,7 +59,7 @@ xcodebuild -project Oyloo.xcodeproj -scheme Oyloo -configuration Debug \
 # Install + launch on a connected device:
 APP=$(find ~/Library/Developer/Xcode/DerivedData/Oyloo-*/Build/Products/Debug-iphoneos -name 'Oyloo.app' -print -quit)
 xcrun devicectl device install app --device <UDID> "$APP"
-xcrun devicectl device process launch --device <UDID> com.oyloo.lifeos.app
+xcrun devicectl device process launch --device <UDID> com.oyloo.life.app
 ```
 
 ## First-time setup in the app
@@ -105,7 +105,7 @@ oyloo-app/
 ## Status
 
 Pre-alpha. The app's user-facing identity is **Oyloo**. Bundle IDs and
-the App Group still use the existing `com.oyloo.lifeos` identifiers so local
+the App Group use the `com.oyloo.life` identifiers so local
 data and provisioning keep working while the app is iterated.
 
 ## License

@@ -31,9 +31,12 @@ public enum OAuthClient {
     }
 
     /// The scheme must also be declared in the app's Info.plist, otherwise the
-    /// callback never reaches the session.
-    public static let callbackScheme = "oyloo"
-    private static let redirectURI = "oyloo://oauth"
+    /// callback never reaches the session. RFC 8252 §7.1: a private-use scheme
+    /// is the reverse-DNS name of a domain the app's author controls, with a
+    /// single slash after it; the server only registers schemes under our
+    /// domain, so a bare word like "oyloo" would be refused.
+    public static let callbackScheme = "com.oyloo.life"
+    private static let redirectURI = "com.oyloo.life:/oauth"
 
     // MARK: - Public API
 
@@ -42,8 +45,20 @@ public enum OAuthClient {
         return TokenStore.load(for: SyncSettings.baseURL) != nil
     }
 
+    /// Drops the tokens locally and asks the server to forget them too: a
+    /// refresh token that outlives sign-out is a bearer secret nobody is
+    /// watching. The revoke call is best effort; the keychain is cleared
+    /// regardless, and so is the remembered client, so the next sign-in
+    /// starts from a clean registration.
     public static func signOut() {
-        TokenStore.clear(for: SyncSettings.baseURL)
+        let base = SyncSettings.baseURL
+        let stored = TokenStore.load(for: base)
+        TokenStore.clear(for: base)
+        forgetClient()
+        guard let stored, let url = URL(string: base) else { return }
+        Task.detached {
+            await revoke(token: stored.refreshToken ?? stored.accessToken, clientID: stored.clientID, base: url)
+        }
     }
 
     /// Runs the whole dance: discovery, registration, browser consent, token
@@ -72,9 +87,16 @@ public enum OAuthClient {
         ]
         guard let authURL = authComponents?.url else { throw Failure.authorization("bad URL") }
 
+        // A cancelled sheet keeps the registration: every re-registration is
+        // a new anonymous row on the server, so the client is forgotten only
+        // when the server itself objects to it (an OAuth error in the
+        // callback, or a rejected token exchange), not on cancel or a flaky
+        // network. A client the server no longer knows is also recoverable
+        // through Sign out, which forgets it too.
         let callback = try await present(authURL: authURL, anchor: anchor)
         let items = URLComponents(url: callback, resolvingAgainstBaseURL: false)?.queryItems ?? []
         if let err = items.first(where: { $0.name == "error" })?.value {
+            forgetClient()
             throw Failure.authorization(err)
         }
         guard items.first(where: { $0.name == "state" })?.value == state else {
@@ -84,10 +106,20 @@ public enum OAuthClient {
             throw Failure.authorization("no code")
         }
 
-        let tokens = try await exchange(
-            code: code, verifier: verifier, clientID: clientID, endpoint: metadata.token
-        )
+        let tokens: TokenStore.Tokens
+        do {
+            tokens = try await exchange(
+                code: code, verifier: verifier, clientID: clientID, endpoint: metadata.token
+            )
+        } catch let failure as Failure {
+            forgetClient()
+            throw failure
+        }
         TokenStore.save(tokens, for: SyncSettings.baseURL)
+    }
+
+    private static func forgetClient() {
+        SharedDefaults.set(nil as String?, forKey: clientIDKey(for: SyncSettings.baseURL))
     }
 
     /// A token good for the next call, refreshed when it is about to expire.
@@ -114,8 +146,10 @@ public enum OAuthClient {
         guard ok(response) else {
             // A refresh token the server no longer accepts means the session
             // is over: drop it so the UI offers a fresh sign-in instead of
-            // failing silently on every upload.
+            // failing silently on every upload. The remembered client goes
+            // too, in case the refusal was the server having forgotten it.
             TokenStore.clear(for: SyncSettings.baseURL)
+            forgetClient()
             throw Failure.token(body(data))
         }
         var tokens = try decodeTokens(data, clientID: stored.clientID)
@@ -148,9 +182,16 @@ public enum OAuthClient {
     }
 
     /// Registered client IDs are per-server and not secret; keeping the last
-    /// one avoids a new registration row on every sign-in.
+    /// one avoids a new registration row on every sign-in. The redirect URI
+    /// is part of the key: the server matches it exactly against what was
+    /// registered, so a client registered under an older redirect would
+    /// fail every sign-in forever.
+    private static func clientIDKey(for base: String) -> String {
+        "oauth.clientID." + base + "|" + redirectURI
+    }
+
     private static func registerClient(metadata: Metadata) async throws -> String {
-        let key = "oauth.clientID." + SyncSettings.baseURL
+        let key = clientIDKey(for: SyncSettings.baseURL)
         if let existing = SharedDefaults.string(forKey: key), !existing.isEmpty { return existing }
         guard let endpoint = metadata.registration else {
             throw Failure.registration("server offers no dynamic registration")
@@ -216,6 +257,20 @@ public enum OAuthClient {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard ok(response) else { throw Failure.token(body(data)) }
         return try decodeTokens(data, clientID: clientID)
+    }
+
+    /// RFC 7009-style revocation, the server's own shape: JSON with the token
+    /// and the client it was issued to. Either token of the pair retires the
+    /// whole pair, so the refresh token is the one to send when there is one.
+    private static func revoke(token: String, clientID: String, base: URL) async {
+        var request = URLRequest(url: base.appendingPathComponent("api/oauth/revoke"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "token": token,
+            "client_id": clientID
+        ])
+        _ = try? await URLSession.shared.data(for: request)
     }
 
     // MARK: - Helpers
