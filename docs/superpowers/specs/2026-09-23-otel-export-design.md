@@ -50,6 +50,8 @@ place as everything else.
   send. The batch processors keep the SDK defaults except a short
   schedule delay, so an app session ships records while it is still
   running.
+- **Spool and reporter** live in `Sources/Core`, free of the SDK, so they
+  are unit-tested with `swift test`.
 - **Local fallback.** `Telemetry.event` writes the same line to the
   matching `Diagnostics` logger first, unconditionally, before it reaches
   the SDK. A processor would have been tidier, but bootstrapping reads
@@ -174,12 +176,32 @@ Done on 2026-09-23:
   attributes preserved as labels.
 - App: both targets compile for a device.
 
-Not done, and why: the end-to-end share from a phone. Both phones were
-unreachable, and the signing certificate on this Mac is revoked — a
-device build is signed from the Mac mini's graphical session, which is
-the owner's to run. What that run would confirm beyond the above is the
-one hop nothing else exercises: the app's OAuth token being accepted by
-the proxy.
+- Phone, app process: after install, records with `process=app` arrive
+  in the logs backend through the proxy with the app's own OAuth token.
+- Phone, share extension: a link shared from Safari into Oyloo (driven
+  through WebDriverAgent) produces the whole flow as records with
+  `process=extension` — sheet opened, extraction, outbox append,
+  commit, upload with `auth=oauth` — and a `share` trace in the traces
+  backend. The keychain relay is not written when the export succeeds.
+
+Found on the phone and fixed before merging:
+
+- Bootstrap read the server address from settings. The first keychain
+  read logs from inside a one-time initialiser, logging bootstraps, and
+  the re-entry hung the app on launch. Bootstrap now reads no settings;
+  the address is cached by `refreshAuthorization`.
+- The transport read settings on every send, and every keychain read is
+  a record, so each export queued the next one. Same cache fixes it.
+- Keychain reads were a third of all records. `keychain.read` is now
+  emitted only for a key's first outcome in a process, when that outcome
+  changes, or on a real failure (`KeychainReadReporter`, tested).
+
+Querying: `process` is structured metadata in the logs backend, not a
+stream label — filter with `{service_name="oyloo-ios"} | process="extension"`.
+
+Unit tests (`swift test`): the spool's order, count and age caps, and the
+keychain read reporter. The rest of the transport is exercised on the
+phone only.
 
 ## Out of scope
 

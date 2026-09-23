@@ -105,6 +105,8 @@ public enum SharedDefaults {
     /// Same relay for the outcome of the extension's own upload.
     public static let lastUploadDiagnosticsKey = "diag.lastUpload"
 
+    private static let readReporter = KeychainReadReporter()
+
     /// OSStatus of the most recent keychain read in this process.
     public private(set) static var lastReadStatus: OSStatus = errSecSuccess
 
@@ -123,6 +125,12 @@ public enum SharedDefaults {
         // actually landed in is the other half of that question: an item filed
         // under the app's own identifier group is invisible to the extension
         // even though both declare the shared group.
+        // Settings are read constantly (one share read the server address a
+        // dozen times); only a key's first outcome, a change, or a failure is
+        // worth a line. See KeychainReadReporter.
+        guard readReporter.shouldReport(key: publicLabel(forKey: key), status: status) else {
+            return data
+        }
         Telemetry.event(
             "keychain.read",
             scope: .storage,

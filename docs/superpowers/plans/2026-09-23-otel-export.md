@@ -105,13 +105,11 @@ authorised one reaches the collector.
 
 ### Task 7: Verify end to end
 
-Steps 1 and 2 wait on the owner: the phones were unreachable and a device
-build is signed from the Mac mini's graphical session. Everything that
-does not need a phone was verified instead — see the spec's testing
-section.
+Done on 2026-09-23 from the owner's phone; see the spec's testing section
+for what was found and fixed on the way.
 
-- [ ] **Step 1: Install** the build on the phone.
-- [ ] **Step 2: Share** something from the share sheet.
-- [ ] **Step 3: Query** the logs backend for `service.name="oyloo-ios"` and confirm records with `process=extension` from a real share (the path itself is confirmed).
-- [ ] **Step 4: Query** the traces backend for a `share` trace.
+- [x] **Step 1: Install** the build on the phone.
+- [x] **Step 2: Share** something from the share sheet.
+- [x] **Step 3: Query** the logs backend for `service.name="oyloo-ios"` and confirm records with `process=extension`.
+- [x] **Step 4: Query** the traces backend for a `share` trace.
 - [x] **Step 5: Record** the result in the spec's testing section if anything differed.

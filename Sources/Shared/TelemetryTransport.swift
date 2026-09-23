@@ -21,7 +21,8 @@ import os
 ///   in-memory queue dies with the extension.
 public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
     private let session: URLSession
-    private let spool: TelemetrySpool
+    private let signal: String
+    private let spool: TelemetrySpool?
 
     public init(signal: String) {
         let configuration = URLSessionConfiguration.ephemeral
@@ -32,7 +33,8 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
         // queued behind it.
         configuration.waitsForConnectivity = false
         session = URLSession(configuration: configuration)
-        spool = TelemetrySpool(signal: signal)
+        self.signal = signal
+        spool = TelemetrySpool.forSignal(signal)
     }
 
     // MARK: - HTTPClient
@@ -55,9 +57,9 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
     }
 
     private func sendSynchronously(_ request: URLRequest) -> Result<HTTPURLResponse, Error> {
-        guard let endpoint = Telemetry.endpoint(for: spool.signal) else {
+        guard let endpoint = Telemetry.endpoint(for: signal) else {
             // Nothing to re-point at: hold the body until a server exists.
-            spool.write(request.httpBody)
+            spool?.write(request.httpBody)
             Telemetry.recordExportOutcome(succeeded: false)
             return .failure(TransportError.noServer)
         }
@@ -70,7 +72,7 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
         outgoing.url = endpoint
         let result = perform(outgoing)
         if case .failure = result {
-            spool.write(request.httpBody)
+            spool?.write(request.httpBody)
         }
         Telemetry.recordExportOutcome(succeeded: {
             if case .success = result { return true }
@@ -80,14 +82,14 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
     }
 
     private func drainSpool(template: URLRequest, endpoint: URL) {
-        for body in spool.take() {
+        for body in spool?.take() ?? [] {
             var replay = template
             replay.url = endpoint
             replay.httpBody = body
             if case .failure = perform(replay) {
                 // Still no luck: put it back and stop, so a long backlog does
                 // not hold the worker thread on every export.
-                spool.write(body)
+                spool?.write(body)
                 return
             }
         }
@@ -112,72 +114,5 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
             return .failure(TransportError.noResponse)
         }
         return outcome
-    }
-}
-
-/// Failed batches on disk, in the process's own container.
-///
-/// Caps rather than a policy: telemetry is never worth a full disk or a slow
-/// launch, so the spool keeps the newest few files and forgets anything older
-/// than a week. A capture is never gated on any of this.
-struct TelemetrySpool {
-    let signal: String
-
-    static let maxFiles = 64
-    static let maxAge: TimeInterval = 7 * 24 * 60 * 60
-
-    private var directory: URL? {
-        guard let support = FileManager.default
-            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
-        let dir = support.appendingPathComponent("telemetry-spool/\(signal)", isDirectory: true)
-        if !FileManager.default.fileExists(atPath: dir.path) {
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        }
-        return dir
-    }
-
-    func write(_ body: Data?) {
-        guard let body, !body.isEmpty, let directory else { return }
-        let name = "\(Date().timeIntervalSince1970)-\(UUID().uuidString).otlp"
-        try? body.write(to: directory.appendingPathComponent(name), options: .atomic)
-        trim()
-    }
-
-    /// Reads and removes everything currently spooled, oldest first. Removal
-    /// happens up front on purpose: a body that fails again is written back,
-    /// and that is cheaper than reasoning about half-consumed files.
-    func take() -> [Data] {
-        guard let directory,
-              let entries = try? FileManager.default.contentsOfDirectory(
-                  at: directory, includingPropertiesForKeys: nil
-              ) else { return [] }
-        let files = entries.filter { $0.pathExtension == "otlp" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-        return files.compactMap { url in
-            defer { try? FileManager.default.removeItem(at: url) }
-            return try? Data(contentsOf: url)
-        }
-    }
-
-    private func trim() {
-        guard let directory,
-              let entries = try? FileManager.default.contentsOfDirectory(
-                  at: directory, includingPropertiesForKeys: [.creationDateKey]
-              ) else { return }
-        let files = entries.filter { $0.pathExtension == "otlp" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-        let cutoff = Date().addingTimeInterval(-Self.maxAge)
-        for url in files {
-            let created = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
-            if let created, created < cutoff {
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
-        let remaining = files.filter { FileManager.default.fileExists(atPath: $0.path) }
-        if remaining.count > Self.maxFiles {
-            for url in remaining.prefix(remaining.count - Self.maxFiles) {
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
     }
 }
