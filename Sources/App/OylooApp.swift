@@ -27,7 +27,7 @@ struct OylooApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(vaultStore: vaultStore)
+            RootView(vaultStore: vaultStore)
                 .onChange(of: scenePhase) { _, phase in
                     switch phase {
                     case .active:

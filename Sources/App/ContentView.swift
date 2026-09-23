@@ -4,6 +4,9 @@ import QuickLook
 
 struct ContentView: View {
     @Bindable var vaultStore: VaultStore
+    /// Inside the Captures section of the root view: one vault at a time with
+    /// a picker, because the root already owns the tab bar and the sidebar.
+    var embedded = false
     @State private var items: [SharedItem] = []
     /// Captures the server holds. Without an App Group the share extension
     /// uploads on its own and its files never reach this process, so the
@@ -15,13 +18,23 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        GeometryReader { geometry in
-            let landscape = geometry.size.width > geometry.size.height && geometry.size.width >= 640
-            Group {
-                if landscape {
-                    landscapeShell
+        Group {
+            if embedded {
+                if let vault = selectedVault ?? vaultStore.vaults.first {
+                    vaultTab(for: vault)
                 } else {
-                    portraitTabs
+                    VaultManagementView(store: vaultStore)
+                }
+            } else {
+                GeometryReader { geometry in
+                    let landscape = geometry.size.width > geometry.size.height && geometry.size.width >= 640
+                    Group {
+                        if landscape {
+                            landscapeShell
+                        } else {
+                            portraitTabs
+                        }
+                    }
                 }
             }
         }
@@ -218,6 +231,19 @@ struct ContentView: View {
             }
             .navigationTitle(vault.displayName)
             .toolbar {
+                if embedded && vaultStore.vaults.count > 1 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Menu {
+                            ForEach(vaultStore.vaults) { v in
+                                Button { selectedVaultKey = v.key } label: {
+                                    Label(v.displayName, systemImage: v.symbolName)
+                                }
+                            }
+                        } label: {
+                            Label(vault.displayName, systemImage: "chevron.down.circle")
+                        }
+                    }
+                }
                 if !groups.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         EditButton()

@@ -1196,7 +1196,7 @@ struct RootView: View {
         Group {
             if sizeClass == .regular {
                 NavigationSplitView {
-                    List(data.sections, selection: $selectionOptional) { section in
+                    List(data.sections, selection: selectionOptional) { section in
                         label(section).tag(section)
                     }
                     .navigationTitle(Text("Oyloo"))
