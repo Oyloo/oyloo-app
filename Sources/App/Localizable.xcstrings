@@ -1,50 +1,187 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "Today": {
+    "%@ / %@": {
+      "shouldTranslate": false
+    },
+    "%@ · %lld": {
+      "shouldTranslate": false
+    },
+    "%@ · %lld ops · %@": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сегодня"
+            "value": "%1$@ · операций: %2$lld · %3$@"
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Šodien"
+            "value": "%1$@ · %2$lld darījumi · %3$@"
           }
         }
       }
     },
-    "Money": {
+    "%@: accounts": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Деньги"
+            "value": "%@: счета"
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nauda"
+            "value": "%@: konti"
           }
         }
       }
     },
-    "Tasks": {
+    "+%@": {
+      "shouldTranslate": false
+    },
+    "A non-euro currency is linked (%@). Everything is added up as euros, so the sums above cannot be trusted.": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Задачи"
+            "value": "К счёту привязана валюта кроме евро (%@). Всё складывается как евро, так что суммам выше верить нельзя."
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Uzdevumi"
+            "value": "Piesaistīta valūta, kas nav eiro (%@). Viss tiek saskaitīts kā eiro, tāpēc augstāk redzamajām summām nevar uzticēties."
+          }
+        }
+      }
+    },
+    "Add child": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить ребёнка"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pievienot bērnu"
+          }
+        }
+      }
+    },
+    "Admin": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Управление"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pārvaldība"
+          }
+        }
+      }
+    },
+    "Amount, €": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сумма, €"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summa, €"
+          }
+        }
+      }
+    },
+    "Archive": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В архив"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arhivēt"
+          }
+        }
+      }
+    },
+    "Archive (%lld)": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Архив (%lld)"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arhīvs (%lld)"
+          }
+        }
+      }
+    },
+    "Balance": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Баланс"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atlikums"
+          }
+        }
+      }
+    },
+    "Bank accounts": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Банковские счета"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bankas konti"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отмена"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atcelt"
           }
         }
       }
@@ -65,34 +202,322 @@
         }
       }
     },
-    "Settings": {
+    "Child": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Настройки"
+            "value": "Ребёнок"
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iestatījumi"
+            "value": "Bērns"
           }
         }
       }
     },
-    "Balance": {
+    "Children": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Баланс"
+            "value": "Дети"
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Atlikums"
+            "value": "Bērni"
+          }
+        }
+      }
+    },
+    "Create": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izveidot"
+          }
+        }
+      }
+    },
+    "E-mail": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почта"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-pasts"
+          }
+        }
+      }
+    },
+    "Enter an amount above zero.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите сумму больше нуля."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ievadiet summu, kas lielāka par nulli."
+          }
+        }
+      }
+    },
+    "Enter how much the goal needs.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Укажите, сколько нужно на цель."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Norādiet, cik mērķim vajag."
+          }
+        }
+      }
+    },
+    "Enter the child's name.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите имя ребёнка."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ievadiet bērna vārdu."
+          }
+        }
+      }
+    },
+    "Free": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свободно"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brīvi"
+          }
+        }
+      }
+    },
+    "Free %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свободно %@"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brīvi %@"
+          }
+        }
+      }
+    },
+    "Give the goal a name.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назовите цель."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nosauciet mērķi."
+          }
+        }
+      }
+    },
+    "Goals": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цели"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mērķi"
+          }
+        }
+      }
+    },
+    "How much is needed, €": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сколько нужно, €"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cik vajag, €"
+          }
+        }
+      }
+    },
+    "Linked": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Привязаны"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Piesaistīti"
+          }
+        }
+      }
+    },
+    "Money": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Деньги"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nauda"
+          }
+        }
+      }
+    },
+    "Month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Месяц"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mēnesis"
+          }
+        }
+      }
+    },
+    "More is set aside for goals than the account holds. The bank does not reserve it — the goals are only on paper, so some of them are not covered yet.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На цели отложено больше, чем лежит на счету. Банк эти деньги не откладывает — копилка тут только на бумаге, так что часть целей пока не обеспечена."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mērķiem atlikts vairāk, nekā ir kontā. Banka šo naudu neatliek — krājkasīte ir tikai uz papīra, tāpēc daļa mērķu vēl nav nodrošināta."
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vārds"
+          }
+        }
+      }
+    },
+    "New goal": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая цель"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jauns mērķis"
+          }
+        }
+      }
+    },
+    "No accounts linked": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Счета не привязаны"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konti nav piesaistīti"
+          }
+        }
+      }
+    },
+    "No bank account is linked to this account yet, so there are no numbers here — zeros would look like a real balance. Ask a parent to link one.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "К этому аккаунту ещё не привязан ни один банковский счёт, поэтому цифр здесь нет — и мы не показываем нули, чтобы их не приняли за настоящий баланс. Попроси родителей привязать счёт."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Šim kontam vēl nav piesaistīts neviens bankas konts, tāpēc šeit nav skaitļu — nulles izskatītos pēc īsta atlikuma. Palūdz vecākiem piesaistīt kontu."
           }
         }
       }
@@ -129,6 +554,70 @@
         }
       }
     },
+    "No data since %@ — %lld days. Either nothing happened on the account, or the bank sync has stopped.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные не обновлялись с %1$@ — %2$lld дн. Либо по счёту правда ничего не происходило, либо остановилась синхронизация с банком."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dati nav atjaunināti kopš %1$@ — %2$lld d. Vai nu kontā tiešām nekas nenotika, vai apstājusies sinhronizācija ar banku."
+          }
+        }
+      }
+    },
+    "No goals yet. What are you saving for?": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Целей пока нет. На что копишь?"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mērķu vēl nav. Kam krāj?"
+          }
+        }
+      }
+    },
+    "None": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nav"
+          }
+        }
+      }
+    },
+    "Not linked to anyone": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ни к кому не привязаны"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nav piesaistīti nevienam"
+          }
+        }
+      }
+    },
     "Nothing due today": {
       "localizations": {
         "ru": {
@@ -145,18 +634,149 @@
         }
       }
     },
-    "and %lld more": {
+    "Nothing moved: there is not that much in the goal.": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "и ещё %lld"
+            "value": "Ничего не перенесено: в цели столько нет."
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "un vēl %lld"
+            "value": "Nekas netika pārvietots: mērķī tik daudz nav."
+          }
+        }
+      }
+    },
+    "Oyloo": {
+      "shouldTranslate": false
+    },
+    "Password, at least 8 characters": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пароль, не меньше 8 символов"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parole, vismaz 8 rakstzīmes"
+          }
+        }
+      }
+    },
+    "Pick at least one account.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите хотя бы один счёт."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izvēlieties vismaz vienu kontu."
+          }
+        }
+      }
+    },
+    "Put in": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Положить"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ielikt"
+          }
+        }
+      }
+    },
+    "Received this month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Дали в этом месяце"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saņemts šomēnes"
+          }
+        }
+      }
+    },
+    "Recent operations": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Последние операции"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pēdējie darījumi"
+          }
+        }
+      }
+    },
+    "Restore": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atjaunot"
+          }
+        }
+      }
+    },
+    "Save": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saglabāt"
+          }
+        }
+      }
+    },
+    "Set aside for goals": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отложено на цели"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atlikts mērķiem"
           }
         }
       }
@@ -177,6 +797,22 @@
         }
       }
     },
+    "Settings": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iestatījumi"
+          }
+        }
+      }
+    },
     "Sign in to see this.": {
       "localizations": {
         "ru": {
@@ -189,6 +825,150 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pierakstieties, lai to redzētu."
+          }
+        }
+      }
+    },
+    "Spending by month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Траты по месяцам"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tēriņi pa mēnešiem"
+          }
+        }
+      }
+    },
+    "Spent %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Потрачено %@"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iztērēts %@"
+          }
+        }
+      }
+    },
+    "Spent this month": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Потрачено в этом месяце"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iztērēts šomēnes"
+          }
+        }
+      }
+    },
+    "Take out": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Забрать"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izņemt"
+          }
+        }
+      }
+    },
+    "Tasks": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Задачи"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uzdevumi"
+          }
+        }
+      }
+    },
+    "That e-mail does not look right.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Похоже, почта указана неверно."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Šķiet, e-pasts ir nepareizs."
+          }
+        }
+      }
+    },
+    "The account was not created: %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Учётная запись не создана: %@"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konts netika izveidots: %@"
+          }
+        }
+      }
+    },
+    "The name is too long: 60 characters at most.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слишком длинное название: не больше 60 символов."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nosaukums ir par garu: ne vairāk kā 60 rakstzīmes."
+          }
+        }
+      }
+    },
+    "The password needs at least 8 characters.": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В пароле нужно не меньше 8 символов."
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parolē vajag vismaz 8 rakstzīmes."
           }
         }
       }
@@ -257,50 +1037,18 @@
         }
       }
     },
-    "Updated just now": {
+    "Today": {
       "localizations": {
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновлено только что"
+            "value": "Сегодня"
           }
         },
         "lv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Atjaunināts tikko"
-          }
-        }
-      }
-    },
-    "Updated %lld min ago": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновлено %lld мин назад"
-          }
-        },
-        "lv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Atjaunināts pirms %lld min"
-          }
-        }
-      }
-    },
-    "Updated %lld h ago": {
-      "localizations": {
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Обновлено %lld ч назад"
-          }
-        },
-        "lv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Atjaunināts pirms %lld h"
+            "value": "Šodien"
           }
         }
       }
@@ -321,7 +1069,122 @@
         }
       }
     },
-    "Oyloo": {
+    "Updated %lld h ago": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновлено %lld ч назад"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atjaunināts pirms %lld h"
+          }
+        }
+      }
+    },
+    "Updated %lld min ago": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновлено %lld мин назад"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atjaunināts pirms %lld min"
+          }
+        }
+      }
+    },
+    "Updated just now": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновлено только что"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atjaunināts tikko"
+          }
+        }
+      }
+    },
+    "What are you saving for": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На что копим"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kam krājam"
+          }
+        }
+      }
+    },
+    "Where the money goes": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Где трачу"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kur aiziet nauda"
+          }
+        }
+      }
+    },
+    "and %lld more": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "и ещё %lld"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "un vēl %lld"
+          }
+        }
+      }
+    },
+    "per the bank on %@": {
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "по данным банка на %@"
+          }
+        },
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pēc bankas datiem uz %@"
+          }
+        }
+      }
+    },
+    "€": {
+      "shouldTranslate": false
+    },
+    "−%@": {
       "shouldTranslate": false
     }
   },
