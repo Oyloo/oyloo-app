@@ -37,7 +37,7 @@ public struct TodaySummary: Sendable, Equatable {
             return []
         case let .kid(_, kid):
             return [line(kid)]
-        case let .parent(_, kids):
+        case let .parent(_, kids, _):
             return kids.map(line)
         }
     }

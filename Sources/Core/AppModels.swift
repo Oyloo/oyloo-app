@@ -89,31 +89,6 @@ public struct MoneyGoal: Decodable, Sendable, Equatable, Identifiable {
     public var isActive: Bool { !achieved && !archived }
 }
 
-public struct KidMoney: Decodable, Sendable, Equatable, Identifiable {
-    public let userId: String
-    public let displayName: String
-    public let hasAccounts: Bool
-    public let balanceCents: Int
-    public let balanceAsOf: String?
-    public let freeCents: Int
-    public let goals: [MoneyGoal]
-
-    public init(
-        userId: String, displayName: String, hasAccounts: Bool, balanceCents: Int,
-        balanceAsOf: String?, freeCents: Int, goals: [MoneyGoal]
-    ) {
-        self.userId = userId
-        self.displayName = displayName
-        self.hasAccounts = hasAccounts
-        self.balanceCents = balanceCents
-        self.balanceAsOf = balanceAsOf
-        self.freeCents = freeCents
-        self.goals = goals
-    }
-
-    public var id: String { userId }
-}
-
 public struct MoneyMember: Decodable, Sendable, Equatable {
     public let userId: String
     public let role: String
@@ -126,13 +101,158 @@ public struct MoneyMember: Decodable, Sendable, Equatable {
     }
 }
 
-/// A child sees their own money; a parent sees every child. The server says
-/// which by `role`; any other role is a contract break and fails to decode.
+public struct MonthSummary: Decodable, Sendable, Equatable {
+    /// `YYYY-MM`.
+    public let month: String
+    public let receivedCents: Int
+    public let spentCents: Int
+
+    public init(month: String, receivedCents: Int, spentCents: Int) {
+        self.month = month
+        self.receivedCents = receivedCents
+        self.spentCents = spentCents
+    }
+}
+
+public struct PlaceTotal: Decodable, Sendable, Equatable {
+    public let name: String
+    public let cents: Int
+    public let count: Int
+
+    public init(name: String, cents: Int, count: Int) {
+        self.name = name
+        self.cents = cents
+        self.count = count
+    }
+}
+
+public struct FeedItem: Decodable, Sendable, Equatable {
+    public let date: String
+    public let label: String
+    public let amountCents: Int
+    /// "in", "out", "internal" or "other", as the server classifies it.
+    public let kind: String
+
+    public init(date: String, label: String, amountCents: Int, kind: String) {
+        self.date = date
+        self.label = label
+        self.amountCents = amountCents
+        self.kind = kind
+    }
+}
+
+public struct UnassignedAccount: Decodable, Sendable, Equatable, Identifiable {
+    public let identificationHash: String
+    public let name: String?
+    public let currency: String?
+    public let product: String?
+    public let txCount: Int
+    public let lastActivity: String?
+
+    public init(
+        identificationHash: String, name: String?, currency: String?, product: String?,
+        txCount: Int, lastActivity: String?
+    ) {
+        self.identificationHash = identificationHash
+        self.name = name
+        self.currency = currency
+        self.product = product
+        self.txCount = txCount
+        self.lastActivity = lastActivity
+    }
+
+    public var id: String { identificationHash }
+}
+
+public struct KidMoney: Decodable, Sendable, Equatable, Identifiable {
+    public let userId: String
+    public let displayName: String
+    public let hasAccounts: Bool
+    public let balanceCents: Int
+    public let balanceAsOf: String?
+    public let freeCents: Int
+    public let goals: [MoneyGoal]
+    public let reservedCents: Int
+    public let overReserved: Bool
+    public let month: MonthSummary?
+    public let monthly: [MonthSummary]
+    public let places: [PlaceTotal]
+    public let feed: [FeedItem]
+    public let lastActivity: String?
+    /// Days since the last operation when that is suspiciously long; null
+    /// when the data is fresh.
+    public let staleDays: Int?
+    public let foreignCurrencies: [String]
+    public let hashes: [String]
+
+    public init(
+        userId: String, displayName: String, hasAccounts: Bool, balanceCents: Int,
+        balanceAsOf: String?, freeCents: Int, goals: [MoneyGoal], reservedCents: Int = 0,
+        overReserved: Bool = false, month: MonthSummary? = nil, monthly: [MonthSummary] = [],
+        places: [PlaceTotal] = [], feed: [FeedItem] = [], lastActivity: String? = nil,
+        staleDays: Int? = nil, foreignCurrencies: [String] = [], hashes: [String] = []
+    ) {
+        self.userId = userId
+        self.displayName = displayName
+        self.hasAccounts = hasAccounts
+        self.balanceCents = balanceCents
+        self.balanceAsOf = balanceAsOf
+        self.freeCents = freeCents
+        self.goals = goals
+        self.reservedCents = reservedCents
+        self.overReserved = overReserved
+        self.month = month
+        self.monthly = monthly
+        self.places = places
+        self.feed = feed
+        self.lastActivity = lastActivity
+        self.staleDays = staleDays
+        self.foreignCurrencies = foreignCurrencies
+        self.hashes = hashes
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case userId, displayName, hasAccounts, balanceCents, balanceAsOf, freeCents, goals
+        case reservedCents, overReserved, month, monthly, places, feed, lastActivity, staleDays
+        case foreignCurrencies, hashes
+    }
+
+    /// The fields the foundation build did not read are optional here: a
+    /// response it cached before this build was installed must still show.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            userId: try c.decode(String.self, forKey: .userId),
+            displayName: try c.decode(String.self, forKey: .displayName),
+            hasAccounts: try c.decode(Bool.self, forKey: .hasAccounts),
+            balanceCents: try c.decode(Int.self, forKey: .balanceCents),
+            balanceAsOf: try c.decodeIfPresent(String.self, forKey: .balanceAsOf),
+            freeCents: try c.decode(Int.self, forKey: .freeCents),
+            goals: try c.decode([MoneyGoal].self, forKey: .goals),
+            reservedCents: try c.decodeIfPresent(Int.self, forKey: .reservedCents) ?? 0,
+            overReserved: try c.decodeIfPresent(Bool.self, forKey: .overReserved) ?? false,
+            month: try c.decodeIfPresent(MonthSummary.self, forKey: .month),
+            monthly: try c.decodeIfPresent([MonthSummary].self, forKey: .monthly) ?? [],
+            places: try c.decodeIfPresent([PlaceTotal].self, forKey: .places) ?? [],
+            feed: try c.decodeIfPresent([FeedItem].self, forKey: .feed) ?? [],
+            lastActivity: try c.decodeIfPresent(String.self, forKey: .lastActivity),
+            staleDays: try c.decodeIfPresent(Int.self, forKey: .staleDays),
+            foreignCurrencies: try c.decodeIfPresent([String].self, forKey: .foreignCurrencies) ?? [],
+            hashes: try c.decodeIfPresent([String].self, forKey: .hashes) ?? []
+        )
+    }
+
+    public var id: String { userId }
+}
+
+/// A child sees their own money; a parent sees every child and the bank
+/// accounts not yet given to anyone. The server says which by `role`; any
+/// other role is a contract break and fails to decode.
 public enum MoneyOverview: Decodable, Sendable, Equatable {
     case kid(me: MoneyMember, kid: KidMoney)
-    case parent(me: MoneyMember, kids: [KidMoney])
+    case parent(me: MoneyMember, kids: [KidMoney], unassigned: [UnassignedAccount])
 
-    private enum CodingKeys: String, CodingKey { case role, me, kid, kids }
+    private enum CodingKeys: String, CodingKey { case role, me, kid, kids, unassigned }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -141,7 +261,11 @@ public enum MoneyOverview: Decodable, Sendable, Equatable {
         case "kid":
             self = .kid(me: me, kid: try c.decode(KidMoney.self, forKey: .kid))
         case "parent":
-            self = .parent(me: me, kids: try c.decode([KidMoney].self, forKey: .kids))
+            self = .parent(
+                me: me,
+                kids: try c.decode([KidMoney].self, forKey: .kids),
+                unassigned: try c.decodeIfPresent([UnassignedAccount].self, forKey: .unassigned) ?? []
+            )
         default:
             throw DecodingError.dataCorruptedError(
                 forKey: .role, in: c, debugDescription: "unknown money role"

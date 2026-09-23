@@ -40,7 +40,7 @@ private let member = MoneyMember(userId: "m", role: "kid", displayName: "Me")
     @Test func parentSeesEveryKid() {
         let summary = TodaySummary.make(tasks: nil, money: .parent(me: member, kids: [
             kid("A", balance: 10, goals: []), kid("B", balance: 20, goals: [goal(9, target: 5, saved: 1)])
-        ]))
+        ], unassigned: []))
         #expect(summary.money.map(\.name) == ["A", "B"])
         #expect(summary.money[0].nextGoal == nil)
         #expect(summary.money[1].nextGoal?.id == 9)

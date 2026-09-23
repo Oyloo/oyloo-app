@@ -58,7 +58,7 @@ private func decode<T: Decodable>(_ type: T.Type, _ json: String) throws -> T {
          "unassigned":[]}
         """#
         let money = try decode(MoneyOverview.self, json)
-        guard case let .parent(_, kids) = money else { Issue.record("expected parent"); return }
+        guard case let .parent(_, kids, _) = money else { Issue.record("expected parent"); return }
         #expect(kids.map(\.displayName) == ["A"])
     }
 
