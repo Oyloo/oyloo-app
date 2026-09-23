@@ -34,11 +34,11 @@
   `isAcceptedContentType(raw: string | null): boolean`,
   `forwardToCollector(signal, request: Request): Promise<Response>`.
 
-- [ ] **Step 1: Write the failing tests** covering: the endpoint defaults to the in-cluster gateway and honours `OTLP_COLLECTOR_URL`; `application/x-protobuf` and `application/json` accepted, `text/plain` refused; a body over the limit refused; a successful forward returns the upstream status; an upstream failure returns 502.
-- [ ] **Step 2: Run** `cd web && bun run test:unit -- --run src/lib/server/otlp/forward.test.ts` — expect failure (module missing).
-- [ ] **Step 3: Implement** the module: read `OTLP_COLLECTOR_URL` from `$env/dynamic/private` with `process.env` as the second source (the pattern `uploads/store.ts` uses for vitest), post the raw `ArrayBuffer` with the caller's content type, return the upstream status and a short text body, map a thrown fetch into 502.
-- [ ] **Step 4: Run the tests** — expect pass.
-- [ ] **Step 5: Commit** `feat(otlp): пересылка телеметрии приложения в коллектор`.
+- [x] **Step 1: Write the failing tests** covering: the endpoint defaults to the in-cluster gateway and honours `OTLP_COLLECTOR_URL`; `application/x-protobuf` and `application/json` accepted, `text/plain` refused; a body over the limit refused; a successful forward returns the upstream status; an upstream failure returns 502.
+- [x] **Step 2: Run** `cd web && bun run test:unit -- --run src/lib/server/otlp/forward.test.ts` — expect failure (module missing).
+- [x] **Step 3: Implement** the module: read `OTLP_COLLECTOR_URL` from `$env/dynamic/private` with `process.env` as the second source (the pattern `uploads/store.ts` uses for vitest), post the raw `ArrayBuffer` with the caller's content type, return the upstream status and a short text body, map a thrown fetch into 502.
+- [x] **Step 4: Run the tests** — expect pass.
+- [x] **Step 5: Commit** `feat(otlp): пересылка телеметрии приложения в коллектор`.
 
 ### Task 2: Server proxy — routes and the access gate
 
@@ -50,11 +50,11 @@
 - Consumes: `forwardToCollector`, `isAcceptedContentType`, `MAX_OTLP_BYTES` from Task 1; `resolveCaller` from `$lib/server/uploads/store`.
 - Produces: `POST /api/otlp/v1/logs`, `POST /api/otlp/v1/traces`.
 
-- [ ] **Step 1: Write the failing census entries** — add both paths to `PUBLIC` in `access.routes.test.ts`.
-- [ ] **Step 2: Run** the census test — expect failure (paths not public, routes absent).
-- [ ] **Step 3: Implement** both routes: `resolveCaller` → 401 without a caller, 403 unless `caller.kind === 'oauth'`, 415 on a wrong content type, 413 over the limit, otherwise forward. Add a narrow regex `^/api/otlp/v1/(logs|traces)$` to `isPublicPath` with a comment saying why (bearer, no session, own gate), and add both paths to the cookieless CSRF exemption.
-- [ ] **Step 4: Run** the whole server test project — expect pass.
-- [ ] **Step 5: Commit** `feat(otlp): приём телеметрии с телефона по OAuth-токену`.
+- [x] **Step 1: Write the failing census entries** — add both paths to `PUBLIC` in `access.routes.test.ts`.
+- [x] **Step 2: Run** the census test — expect failure (paths not public, routes absent).
+- [x] **Step 3: Implement** both routes: `resolveCaller` → 401 without a caller, 403 unless `caller.kind === 'oauth'`, 415 on a wrong content type, 413 over the limit, otherwise forward. Add a narrow regex `^/api/otlp/v1/(logs|traces)$` to `isPublicPath` with a comment saying why (bearer, no session, own gate), and add both paths to the cookieless CSRF exemption.
+- [x] **Step 4: Run** the whole server test project — expect pass.
+- [x] **Step 5: Commit** `feat(otlp): приём телеметрии с телефона по OAuth-токену`.
 
 ### Task 3: Server deployment
 
@@ -69,9 +69,9 @@ authorised one reaches the collector.
 **Files:**
 - Modify: `project.yml`
 
-- [ ] **Step 1: Add** a `packages:` block with `opentelemetry-swift` from `2.5.2`, and to both targets dependencies on `OpenTelemetryApi`, `OpenTelemetrySdk`, `OpenTelemetryProtocolExporterHTTP`.
-- [ ] **Step 2: Run** `xcodegen` and build both schemes for a device.
-- [ ] **Step 3: Commit** `build: add opentelemetry-swift to both targets`.
+- [x] **Step 1: Add** a `packages:` block with `opentelemetry-swift` from `2.5.2`, and to both targets dependencies on `OpenTelemetryApi`, `OpenTelemetrySdk`, `OpenTelemetryProtocolExporterHTTP`.
+- [x] **Step 2: Run** `xcodegen` and build both schemes for a device.
+- [x] **Step 3: Commit** `build: add opentelemetry-swift to both targets`.
 
 ### Task 5: Telemetry bootstrap, transport and mirror
 
@@ -86,27 +86,32 @@ authorised one reaches the collector.
   `TelemetryScope` (`storage`/`share`/`sync`), and an attribute builder that
   takes `[String: TelemetryValue]`.
 
-- [ ] **Step 1: Implement** the resource (service name, version from the bundle, process, OS and model), lazy idempotent start, both providers with batch processors, the OTLP/HTTP exporters bound to `<base>api/otlp/v1/...`, the bearer `headersProvider`, the `OSLogMirror` processor, and the feedback handler replacement.
-- [ ] **Step 2: Implement** `TelemetryTransport`: late endpoint binding, synchronous send, spool directory with the count and age caps, replay before send.
-- [ ] **Step 3: Build** both targets for a device.
-- [ ] **Step 4: Commit** `feat(telemetry): OTLP export with an os_log mirror`.
+- [x] **Step 1: Implement** the resource (service name, version from the bundle, process, OS and model), lazy idempotent start, both providers with batch processors, the OTLP/HTTP exporters bound to `<base>api/otlp/v1/...`, the bearer `headersProvider`, the `OSLogMirror` processor, and the feedback handler replacement.
+- [x] **Step 2: Implement** `TelemetryTransport`: late endpoint binding, synchronous send, spool directory with the count and age caps, replay before send.
+- [x] **Step 3: Build** both targets for a device.
+- [x] **Step 4: Commit** `feat(telemetry): OTLP export with an os_log mirror`.
 
 ### Task 6: Call sites
 
 **Files:**
 - Modify: `Sources/Shared/SharedDefaults.swift`, `Sources/Shared/VaultStore.swift`, `Sources/Shared/SharedStore.swift`, `Sources/Shared/Uploader.swift`, `Sources/Shared/CaptureFeed.swift`, `Sources/Shared/OAuthClient.swift`, `Sources/Extension/ShareViewController.swift`, `Sources/App/OylooApp.swift`
 
-- [ ] **Step 1: Emit** the events of the spec's table beside every existing `Diagnostics` line, keeping the private lines private.
-- [ ] **Step 2: Add** the spans: `share` with `share.extract` and `sync` in the extension, `sync` with `sync.item` in the app.
-- [ ] **Step 3: Add** `kind` to `OAuthClient.Failure` and use it instead of the error description in the relay and in attributes.
-- [ ] **Step 4: Flush** in the extension before completing or cancelling, and in the app on foreground and background; drain and clear the relay on launch, emitting `share.relay`.
-- [ ] **Step 5: Build** both targets for a device.
-- [ ] **Step 6: Commit** `feat(telemetry): report the share and upload flow as records and spans`.
+- [x] **Step 1: Emit** the events of the spec's table beside every existing `Diagnostics` line, keeping the private lines private.
+- [x] **Step 2: Add** the spans: `share` with `share.extract` and `sync` in the extension, `sync` with `sync.item` in the app.
+- [x] **Step 3: Add** `kind` to `OAuthClient.Failure` and use it instead of the error description in the relay and in attributes.
+- [x] **Step 4: Flush** in the extension before completing or cancelling, and in the app on foreground and background; drain and clear the relay on launch, emitting `share.relay`.
+- [x] **Step 5: Build** both targets for a device.
+- [x] **Step 6: Commit** `feat(telemetry): report the share and upload flow as records and spans`.
 
 ### Task 7: Verify end to end
 
+Steps 1 and 2 wait on the owner: the phones were unreachable and a device
+build is signed from the Mac mini's graphical session. Everything that
+does not need a phone was verified instead — see the spec's testing
+section.
+
 - [ ] **Step 1: Install** the build on the phone.
 - [ ] **Step 2: Share** something from the share sheet.
-- [ ] **Step 3: Query** the logs backend for `service.name="oyloo-ios"` and confirm records with `process=extension`.
+- [ ] **Step 3: Query** the logs backend for `service.name="oyloo-ios"` and confirm records with `process=extension` from a real share (the path itself is confirmed).
 - [ ] **Step 4: Query** the traces backend for a `share` trace.
-- [ ] **Step 5: Record** the result in the spec's testing section if anything differed.
+- [x] **Step 5: Record** the result in the spec's testing section if anything differed.

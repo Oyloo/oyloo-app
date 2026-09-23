@@ -50,11 +50,15 @@ place as everything else.
   send. The batch processors keep the SDK defaults except a short
   schedule delay, so an app session ships records while it is still
   running.
-- **Local fallback.** `OSLogMirror`, a `LogRecordProcessor`, writes every
-  record to the existing `Diagnostics` loggers (the record's scope is the
-  category) with `.public` privacy. Records carry only safe values by
-  construction, so the mirror may be public. Anything private stays a
-  direct `Diagnostics` line and never enters a record.
+- **Local fallback.** `Telemetry.event` writes the same line to the
+  matching `Diagnostics` logger first, unconditionally, before it reaches
+  the SDK. A processor would have been tidier, but bootstrapping reads
+  settings and reading settings logs: the storage and keychain lines are
+  emitted while there is no provider yet, and a processor would lose
+  exactly those. Writing at the call site also means a record is never
+  lost locally, whatever the SDK does. The lines are `.public` because
+  the attribute type admits nothing else; anything private stays a direct
+  `Diagnostics` call and never becomes a record.
 - **Relay.** Kept as the last resort only. The extension flushes before
   completing its request; when the flush fails it writes the same
   one-line summaries to the keychain as before. The app reads them on
@@ -132,7 +136,9 @@ in the route census test.
 
 ## Lifecycle
 
-- `Telemetry.start()` is idempotent; every `event`/`span` call runs it.
+- `Telemetry.start()` is idempotent and guarded by a recursive lock: it
+  reads settings, which log, which start telemetry. The nested call
+  returns immediately because the started flag is set first.
 - Extension: `Telemetry.flush(timeout: 6)` before `completeRequest` and
   before `cancelRequest`, off the cooperative thread pool because the
   flush blocks on the network.
@@ -153,11 +159,27 @@ in the route census test.
 
 ## Testing
 
-- Server: unit tests for the proxy module (forwarding, content-type,
-  size limit, upstream failure) and the updated route census.
-- App: both targets build for a device. Manual end to end: share from a
-  phone, then query the logs backend for `service.name=oyloo-ios` with
-  `process=extension`, and the traces backend for a `share` trace.
+Done on 2026-09-23:
+
+- Server: 13 unit tests for the proxy — the collector address and its
+  override, the accepted content types, the size limit, an upstream
+  status passed through unchanged, an unreachable collector as 502, and
+  the gate refusing a session, the agent's static token and an anonymous
+  caller. The route census carries both new paths.
+- Deployed: both endpoints answer 401 anonymously and to a bogus bearer,
+  and the collector accepts a post from the web pod.
+- Backend: a synthetic record with `service.name=oyloo-ios` and
+  `process=extension` posted from inside the cluster arrives in the logs
+  backend and is returned by the query this spec promises, with its
+  attributes preserved as labels.
+- App: both targets compile for a device.
+
+Not done, and why: the end-to-end share from a phone. Both phones were
+unreachable, and the signing certificate on this Mac is revoked — a
+device build is signed from the Mac mini's graphical session, which is
+the owner's to run. What that run would confirm beyond the above is the
+one hop nothing else exercises: the app's OAuth token being accepted by
+the proxy.
 
 ## Out of scope
 
