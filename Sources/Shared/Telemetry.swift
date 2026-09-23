@@ -72,9 +72,11 @@ public enum Telemetry {
 
     // MARK: - Lifecycle
 
-    // Recursive: bootstrapping reads settings, reading settings logs, and
-    // logging bootstraps. The cycle is real and it is fine — it just must not
-    // deadlock on the way through.
+    // Bootstrap must never read settings. Settings live in the keychain, the
+    // first keychain read logs from inside a one-time initialiser, and logging
+    // bootstraps: a settings read here re-entered that initialiser and hung the
+    // app on launch. The address is bound per request by the transport
+    // instead. The lock stays recursive for the same family of reasons.
     private static let lock = NSRecursiveLock()
     nonisolated(unsafe) private static var started = false
     nonisolated(unsafe) private static var loggerProvider: LoggerProviderSdk?
@@ -129,7 +131,7 @@ public enum Telemetry {
         )
 
         let logExporter = OtlpHttpLogExporter(
-            endpoint: endpoint(for: "logs") ?? placeholderEndpoint,
+            endpoint: placeholderEndpoint,
             config: configuration,
             httpClient: TelemetryTransport(signal: "logs"),
             envVarHeaders: nil,
@@ -138,7 +140,7 @@ public enum Telemetry {
             requeueOnFailure: false
         )
         let spanExporter = OtlpHttpTraceExporter(
-            endpoint: endpoint(for: "traces") ?? placeholderEndpoint,
+            endpoint: placeholderEndpoint,
             config: configuration,
             httpClient: TelemetryTransport(signal: "traces"),
             envVarHeaders: nil,
@@ -167,8 +169,8 @@ public enum Telemetry {
         OpenTelemetry.registerTracerProvider(tracerProvider: tracer)
     }
 
-    /// Only ever used as the exporter's birth value; every request is
-    /// re-pointed by the transport, and one with no server fails there.
+    /// The exporters' birth value, never used for a real send: every request
+    /// is re-pointed by the transport, and one with no server fails there.
     private static let placeholderEndpoint = URL(string: "http://127.0.0.1:4318/v1/logs")!
 
     private static func makeResource() -> Resource {
@@ -199,11 +201,20 @@ public enum Telemetry {
 
     // MARK: - Address and authorisation
 
-    /// The server's OTLP path for a signal, or nil when no server is set.
-    /// Read fresh every time: the address lives in settings and may change.
+    nonisolated(unsafe) private static var serverBase: String?
+
+    /// The server's OTLP path for a signal, or nil when no server is known.
+    ///
+    /// Cached, not read from settings on each send: settings live in the
+    /// keychain, every keychain read is itself a record, and reading on every
+    /// export fed the exporter its own traffic forever. The cache is filled by
+    /// `refreshAuthorization`, which runs whenever a token is refreshed.
     static func endpoint(for signal: String) -> URL? {
-        guard SyncSettings.isConfigured else { return nil }
-        return URL(string: SyncSettings.baseURL + "api/otlp/v1/" + signal)
+        lock.lock()
+        let base = serverBase
+        lock.unlock()
+        guard let base else { return nil }
+        return URL(string: base + "api/otlp/v1/" + signal)
     }
 
     private static func authorizationHeaders() -> [(String, String)]? {
@@ -218,8 +229,10 @@ public enum Telemetry {
     /// only the app's OAuth token here, so an unsigned batch is pointless —
     /// but it still spools, and the next refresh gets it out.
     public static func refreshAuthorization() async {
+        let base = SyncSettings.isConfigured ? SyncSettings.baseURL : nil
         let token = try? await OAuthClient.validAccessToken()
         lock.lock()
+        serverBase = base
         bearer = token
         lock.unlock()
     }
