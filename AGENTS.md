@@ -67,6 +67,15 @@ scrubbed-generic version later.
 
 ## Pushing to GitHub
 
+Before every push, in the same command as the push, check which account
+is active — other sessions switch it, and it changed between a dry run
+and a real push once already. The login comparison is what stops a
+wrong push; `gh api user` alone succeeds for any account:
+
+```bash
+gh auth status && [ "$(gh api user --jq .login)" = <account> ] && git push ...
+```
+
 The owner has more than one GitHub account in `gh`, and only one of them
 can push here. A 403 or "permission denied to <login>" means the wrong
 account is active, not that access is missing. Before saying otherwise:
