@@ -70,6 +70,9 @@ public enum OAuthClient {
     public static func signOut() {
         let base = SyncSettings.baseURL
         let stored = TokenStore.load(for: base)
+        // Personal devices, but the next account must never see the last
+        // one's money or tasks, even for the moment before a refresh.
+        ResponseCache.forServer(base).clear()
         TokenStore.clear(for: base)
         forgetClient()
         guard let stored, let url = URL(string: base) else { return }

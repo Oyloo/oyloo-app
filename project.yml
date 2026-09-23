@@ -35,6 +35,7 @@ targets:
     sources:
       - Sources/App
       - Sources/Shared
+      - Sources/Core
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.life.app
@@ -58,6 +59,7 @@ targets:
     sources:
       - Sources/Extension
       - Sources/Shared
+      - Sources/Core
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.oyloo.life.app.share
