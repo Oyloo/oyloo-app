@@ -8,6 +8,7 @@ public enum AppAPI {
         case notConfigured
         case notSignedIn
         case http(Int)
+        case server(code: String, message: String)
 
         public var errorDescription: String? {
             switch self {
@@ -16,6 +17,7 @@ public enum AppAPI {
             case .http(401): String(localized: "The server refused the sign-in. Sign in again.")
             case .http(403): String(localized: "This account has no access here.")
             case .http(let code): String(localized: "The server answered \(code).")
+            case .server(_, let message): message
             }
         }
     }
@@ -35,6 +37,64 @@ public enum AppAPI {
         request.httpBody = try JSONSerialization.data(withJSONObject: ["status": "done"])
         let (_, response) = try await URLSession.shared.data(for: request)
         try check(response)
+    }
+
+    public static func createGoal(title: String, targetCents: Int) async throws {
+        try await send("POST", "money/goals", ["title": title, "targetCents": targetCents])
+    }
+
+    public static func moveMoney(goalId: Int, amountCents: Int, out: Bool) async throws {
+        try await send("POST", "money/goals/\(goalId)/moves",
+                       ["amountCents": amountCents, "direction": out ? "out" : "in"])
+    }
+
+    public static func archiveGoal(id: Int) async throws {
+        try await send("POST", "money/goals/\(id)/archive", [:])
+    }
+
+    public static func unarchiveGoal(id: Int) async throws {
+        try await send("POST", "money/goals/\(id)/unarchive", [:])
+    }
+
+    public static func addKid(
+        email: String, password: String, displayName: String, accountHashes: [String]
+    ) async throws {
+        try await send("POST", "money/kids", [
+            "email": email, "password": password, "displayName": displayName,
+            "accountHashes": accountHashes
+        ])
+    }
+
+    public static func linkAccounts(userId: String, hashes: [String]) async throws {
+        try await send("POST", "money/kids/\(pathSegment(userId))/accounts", ["hashes": hashes])
+    }
+
+    public static func unlinkAccount(userId: String, hash: String) async throws {
+        try await send("DELETE", "money/kids/\(pathSegment(userId))/accounts/\(pathSegment(hash))", nil)
+    }
+
+    private static func pathSegment(_ raw: String) -> String {
+        raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? raw
+    }
+
+    /// Writes answer `{ error, message }` on refusal; the code lets the
+    /// screen word it, the message is the fallback.
+    private static func send(_ method: String, _ path: String, _ body: [String: Any]?) async throws {
+        var request = try await request(path: path)
+        request.httpMethod = method
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(code) else {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String {
+                throw Failure.server(code: error, message: (json["message"] as? String) ?? error)
+            }
+            throw Failure.http(code)
+        }
     }
 
     /// Cache key for a call; the same string `CachedResource` reads back.
