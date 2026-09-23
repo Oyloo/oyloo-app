@@ -64,3 +64,34 @@ Document the reason in the commit message. Bypasses are visible in git log.
 
 Don't commit. Move the work to a private repo and upstream the
 scrubbed-generic version later.
+
+## Pushing to GitHub
+
+The owner has more than one GitHub account in `gh`, and only one of them
+can push here. A 403 or "permission denied to <login>" means the wrong
+account is active, not that access is missing. Before saying otherwise:
+
+```bash
+gh auth status                                  # list accounts
+gh auth switch -u <account>                     # try each one
+gh api user --jq .login                         # who GitHub really sees
+gh api repos/Oyloo/oyloo-app --jq .permissions.push
+git push --dry-run origin HEAD:refs/heads/<branch>
+```
+
+Trust `gh api user`, not the label in `gh auth status`: a stored token can
+belong to a different account than its label. If no account reports
+`push: true`, ask the owner to re-login with `gh auth login -w`. Do not
+repeat another agent session's "no access" claim without running these
+checks.
+
+## Signing builds
+
+A device build is signed on the Mac mini, from its graphical session: over
+ssh the signing key is unavailable (`errSecInternalComponent`). Run the
+build as a one-off launchd job in the owner's `gui/<uid>` domain, copy the
+product back, and install it with `devicectl` from whichever Mac reaches
+the phone. The same works for WebDriverAgent: `build-for-testing` there,
+then `xcodebuild test-without-building -xctestrun ...` and `iproxy 8100`
+locally, which needs no signing identity.
+
