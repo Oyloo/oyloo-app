@@ -39,6 +39,22 @@
         }
       }
     },
+    "%lld days overdue": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nokavēts %lld d."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "просрочено на %lld дн."
+          }
+        }
+      }
+    },
     "+%@": {
       "shouldTranslate": false
     },
@@ -54,6 +70,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Piesaistīta valūta, kas nav eiro (%@). Viss tiek saskaitīts kā eiro, tāpēc augstāk redzamajām summām nevar uzticēties."
+          }
+        }
+      }
+    },
+    "Add": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pievienot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить"
           }
         }
       }
@@ -86,6 +118,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pārvaldība"
+          }
+        }
+      }
+    },
+    "All tags": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visi tagi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Все теги"
           }
         }
       }
@@ -234,6 +282,38 @@
         }
       }
     },
+    "Circle": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loks"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Круг"
+          }
+        }
+      }
+    },
+    "Complete": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izpildīt"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выполнить"
+          }
+        }
+      }
+    },
     "Create": {
       "localizations": {
         "ru": {
@@ -246,6 +326,70 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izveidot"
+          }
+        }
+      }
+    },
+    "Done": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izpildīts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово"
+          }
+        }
+      }
+    },
+    "Drop": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atcelt"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить"
+          }
+        }
+      }
+    },
+    "Due": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termiņš"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Срок"
+          }
+        }
+      }
+    },
+    "Due date": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termiņš"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Срок"
           }
         }
       }
@@ -394,6 +538,22 @@
         }
       }
     },
+    "Important": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Svarīgi"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Важно"
+          }
+        }
+      }
+    },
     "Linked": {
       "localizations": {
         "ru": {
@@ -486,6 +646,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jauns mērķis"
+          }
+        }
+      }
+    },
+    "New task": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jauns uzdevums"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новая задача"
+          }
+        }
+      }
+    },
+    "Next": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nākamie"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следующие"
           }
         }
       }
@@ -634,6 +826,22 @@
         }
       }
     },
+    "Nothing here.": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Šeit nekā nav."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Здесь пусто."
+          }
+        }
+      }
+    },
     "Nothing moved: there is not that much in the goal.": {
       "localizations": {
         "ru": {
@@ -650,8 +858,72 @@
         }
       }
     },
+    "Only me": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tikai es"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Только я"
+          }
+        }
+      }
+    },
+    "Overdue": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nokavēti"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Просрочено"
+          }
+        }
+      }
+    },
     "Oyloo": {
       "shouldTranslate": false
+    },
+    "Parse": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izparsēt"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разобрать"
+          }
+        }
+      }
+    },
+    "Parsing is not set up on the server yet. The phrase became the title.": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frāžu parsēšana serverī vēl nav iestatīta. Frāze kļuva par nosaukumu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разбор фраз на сервере пока не настроен. Фраза стала названием."
+          }
+        }
+      }
     },
     "Password, at least 8 characters": {
       "localizations": {
@@ -733,6 +1005,22 @@
         }
       }
     },
+    "Reopen": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atjaunot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть в работу"
+          }
+        }
+      }
+    },
     "Restore": {
       "localizations": {
         "ru": {
@@ -761,6 +1049,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saglabāt"
+          }
+        }
+      }
+    },
+    "Say or type the task": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pasakiet vai uzrakstiet uzdevumu"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скажите или напишите задачу"
           }
         }
       }
@@ -829,6 +1133,22 @@
         }
       }
     },
+    "Someday": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kādreiz"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Когда-нибудь"
+          }
+        }
+      }
+    },
     "Spending by month": {
       "localizations": {
         "ru": {
@@ -877,6 +1197,22 @@
         }
       }
     },
+    "Tag": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тег"
+          }
+        }
+      }
+    },
     "Take out": {
       "localizations": {
         "ru": {
@@ -889,6 +1225,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Izņemt"
+          }
+        }
+      }
+    },
+    "Tap the microphone on the keyboard to dictate. Parsing sends the phrase to the server and OpenAI.": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nospiediet mikrofonu tastatūrā, lai diktētu. Parsēšana nosūta frāzi uz serveri un OpenAI."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите микрофон на клавиатуре, чтобы надиктовать. «Разобрать» отправляет фразу на сервер и в OpenAI."
           }
         }
       }
@@ -973,6 +1325,38 @@
         }
       }
     },
+    "The phrase could not be parsed. It became the title.": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frāzi neizdevās izparsēt. Tā kļuva par nosaukumu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фразу не удалось разобрать. Она стала названием."
+          }
+        }
+      }
+    },
+    "The phrase is empty or too long.": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frāze ir tukša vai pārāk gara."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фраза пустая или слишком длинная."
+          }
+        }
+      }
+    },
     "The server answered %lld.": {
       "localizations": {
         "ru": {
@@ -1037,6 +1421,22 @@
         }
       }
     },
+    "Title": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nosaukums"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Название"
+          }
+        }
+      }
+    },
     "Today": {
       "localizations": {
         "ru": {
@@ -1049,6 +1449,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Šodien"
+          }
+        }
+      }
+    },
+    "Too many phrases this hour. The phrase became the title.": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pārāk daudz frāžu šajā stundā. Frāze kļuva par nosaukumu."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Слишком много фраз за час. Фраза стала названием."
           }
         }
       }
@@ -1117,6 +1533,38 @@
         }
       }
     },
+    "View": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skats"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вид"
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gaida"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ожидание"
+          }
+        }
+      }
+    },
     "What are you saving for": {
       "localizations": {
         "ru": {
@@ -1165,6 +1613,70 @@
         }
       }
     },
+    "due %@": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termiņš %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "срок %@"
+          }
+        }
+      }
+    },
+    "due in %lld days": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pēc %lld d."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "через %lld дн."
+          }
+        }
+      }
+    },
+    "due today": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termiņš šodien"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "срок сегодня"
+          }
+        }
+      }
+    },
+    "due tomorrow": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "termiņš rīt"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "срок завтра"
+          }
+        }
+      }
+    },
     "per the bank on %@": {
       "localizations": {
         "ru": {
@@ -1177,6 +1689,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "pēc bankas datiem uz %@"
+          }
+        }
+      }
+    },
+    "waiting on %@": {
+      "localizations": {
+        "lv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "gaida: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ждём: %@"
           }
         }
       }
