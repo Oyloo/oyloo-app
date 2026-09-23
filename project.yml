@@ -23,6 +23,11 @@ settings:
     DEVELOPMENT_TEAM: "8QM66BKC25"
     CODE_SIGN_STYLE: Automatic
 
+packages:
+  OpenTelemetry:
+    url: https://github.com/open-telemetry/opentelemetry-swift
+    from: 2.5.2
+
 targets:
   Oyloo:
     type: application
@@ -40,6 +45,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: ShareExtension
+      - package: OpenTelemetry
+        product: OpenTelemetryApi
+      - package: OpenTelemetry
+        product: OpenTelemetrySdk
+      - package: OpenTelemetry
+        product: OpenTelemetryProtocolExporterHTTP
 
   ShareExtension:
     type: app-extension
@@ -54,3 +65,10 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Sources/Extension/Extension.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         PRODUCT_NAME: ShareToOyloo
+    dependencies:
+      - package: OpenTelemetry
+        product: OpenTelemetryApi
+      - package: OpenTelemetry
+        product: OpenTelemetrySdk
+      - package: OpenTelemetry
+        product: OpenTelemetryProtocolExporterHTTP
