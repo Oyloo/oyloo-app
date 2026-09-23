@@ -1,4 +1,5 @@
 import UIKit
+import OpenTelemetryApi
 import SwiftUI
 import UniformTypeIdentifiers
 import LinkPresentation
@@ -34,6 +35,12 @@ final class ShareViewController: UIViewController {
 
     private var hostingController: UIHostingController<VaultPickerView>?
 
+    /// The whole share, from the sheet opening to the request completing.
+    /// Extraction and the upload hang under it, so one trace answers "what
+    /// happened when I shared that" without any of what was shared in it.
+    private var shareSpan: Span?
+    private var extractSpan: Span?
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .clear
@@ -49,6 +56,10 @@ final class ShareViewController: UIViewController {
         // Token presence and the keychain status behind it: "not signed in"
         // from the extension while the app is signed in is a keychain-group
         // question, and only the status code answers it.
+        // Before anything else: the exporters sign with this, and a batch
+        // sent without it is refused by the server and spooled for nothing.
+        Task { await Telemetry.refreshAuthorization() }
+        shareSpan = Telemetry.span("share")
         let tokens = TokenStore.load(for: SyncSettings.baseURL)
         let summary = "vaults=\(vaultStore.vaults.count) "
             + "vaultsReadStatus=\(vaultStore.lastLoadStatus) "
@@ -59,9 +70,17 @@ final class ShareViewController: UIViewController {
             + "tokenPresent=\(tokens != nil) "
             + "refreshPresent=\(tokens?.refreshToken != nil) "
             + "tokenFresh=\(tokens?.isFresh ?? false)"
-        Diagnostics.share.notice(
-            "share sheet opened process=\(Diagnostics.process, privacy: .public) \(summary, privacy: .public)"
-        )
+        Telemetry.event("share.opened", scope: .share, [
+            "vaults": .count(vaultStore.vaults.count),
+            "vaultsReadStatus": .status(vaultStore.lastLoadStatus),
+            "usesAppGroup": .flag(SharedDefaults.usesAppGroup),
+            "syncConfigured": .flag(SyncSettings.isConfigured),
+            "baseURLLength": .count(SyncSettings.baseURL.count),
+            "tokenReadStatus": .status(TokenStore.lastLoadStatus),
+            "tokenPresent": .flag(tokens != nil),
+            "refreshPresent": .flag(tokens?.refreshToken != nil),
+            "tokenFresh": .flag(tokens?.isFresh ?? false)
+        ])
         // Same line into shared storage for the app to report on its next
         // launch (see SharedDefaults.lastShareDiagnosticsKey). If even this
         // write is invisible to the app, the two processes do not share a
@@ -72,6 +91,7 @@ final class ShareViewController: UIViewController {
         )
         initialPreview = detectInitialPreview()
         presentPicker()
+        extractSpan = Telemetry.span("share.extract", parent: shareSpan)
         extractItem { [weak self] item in
             DispatchQueue.main.async {
                 self?.stagingDidComplete(with: item)
@@ -123,6 +143,18 @@ final class ShareViewController: UIViewController {
     private func stagingDidComplete(with item: SharedItem?) {
         isExtracting = false
         stagedItem = item
+        Telemetry.event("share.extracted", scope: .share, [
+            "kind": .name(item.map(Self.kindOf) ?? "none"),
+            "attachment": .flag(item?.attachmentPath != nil)
+        ])
+        if let extractSpan {
+            Telemetry.end(
+                extractSpan,
+                failure: item == nil ? "nothing-extracted" : nil,
+                attributes: ["kind": .name(item.map(Self.kindOf) ?? "none")]
+            )
+            self.extractSpan = nil
+        }
         if let pending = pendingVault, let item {
             commitAndComplete(item: item, vault: pending)
             return
@@ -140,34 +172,71 @@ final class ShareViewController: UIViewController {
         let stamped = item.with(vaultKey: vault.key, publish: pendingPublish && item.isAudio)
         SharedStore.append(stamped)
         ShareLog.write("committed to vault key=\(vault.key) name=\(vault.displayName)")
+        // The vault the user picked is a name they chose: the flag says
+        // whether this process will upload, not what it is uploading.
+        Telemetry.event("share.committed", scope: .share, [
+            "publish": .flag(pendingPublish && item.isAudio),
+            "uploadsHere": .flag(!SharedDefaults.usesAppGroup && SyncSettings.isConfigured)
+        ])
 
         // Без App Group приложение этот захват никогда не увидит: контейнер у
         // расширения свой. Значит отправлять должно само расширение, и только
         // после ответа сервера можно закрывать лист. С App Group ничего ждать
         // не надо: отправит приложение при следующем открытии.
         guard !SharedDefaults.usesAppGroup, SyncSettings.isConfigured else {
-            complete()
+            Task { await finish(cancelled: false) }
             return
         }
         Task {
-            let report = await Uploader.syncAll()
+            let report = await Uploader.syncAll(parent: shareSpan)
             ShareLog.write("uploaded from extension: \(report.summary)")
-            // Relayed to the app's console like the share-sheet line above.
+            await finish(cancelled: false, relay: report.diagnostics)
+        }
+    }
+
+    /// Ships the telemetry, then closes the sheet.
+    ///
+    /// Order matters: this process is gone the moment the request completes,
+    /// and an unflushed batch goes with it. The relay to the app's keychain is
+    /// written only when the export did not get through — with the collector
+    /// reachable, the app has no need to repeat what it already has.
+    private func finish(cancelled: Bool, relay: String? = nil) async {
+        if let shareSpan {
+            Telemetry.end(shareSpan, failure: cancelled ? "cancelled" : nil)
+            self.shareSpan = nil
+        }
+        await Telemetry.flushWithFreshToken()
+        if let relay, Telemetry.lastExportFailed {
             SharedDefaults.set(
-                ISO8601DateFormatter().string(from: Date()) + " " + report.diagnostics,
+                ISO8601DateFormatter().string(from: Date()) + " " + relay,
                 forKey: SharedDefaults.lastUploadDiagnosticsKey
             )
-            await MainActor.run { self.complete() }
+        }
+        await MainActor.run {
+            if cancelled {
+                let cancelError = NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError)
+                self.extensionContext?.cancelRequest(withError: cancelError)
+            } else {
+                self.extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
+            }
         }
     }
 
     private func complete() {
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
+        Task { await finish(cancelled: false) }
     }
 
     private func cancel() {
-        let cancelError = NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError)
-        extensionContext?.cancelRequest(withError: cancelError)
+        Telemetry.event("share.cancelled", scope: .share)
+        Task { await finish(cancelled: true) }
+    }
+
+    /// What kind of thing was shared — never what it was.
+    private static func kindOf(_ item: SharedItem) -> String {
+        if item.attachmentPath != nil { return item.isAudio ? "audio" : "file" }
+        if item.url != nil { return "url" }
+        if item.text != nil { return "text" }
+        return "empty"
     }
 
     // MARK: - Initial preview detection

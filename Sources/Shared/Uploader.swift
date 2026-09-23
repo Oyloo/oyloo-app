@@ -1,4 +1,5 @@
 import Foundation
+import OpenTelemetryApi
 import os
 
 /// Ships outbox items to the configured endpoint: the missing last mile
@@ -39,40 +40,58 @@ public enum Uploader {
     /// needs a cable, the relayed report does not.
     private static var lastAuth = "-"
 
-    public static func syncAll() async -> Report {
+    /// Ships everything pending. `parent` lets the share extension hang this
+    /// under the span for the share the user just made, so one trace shows
+    /// the whole journey from the sheet to the server's answer.
+    public static func syncAll(parent: Span? = nil) async -> Report {
         var report = Report()
         guard SyncSettings.isConfigured else {
-            Diagnostics.sync.notice("sync process=\(Diagnostics.process, privacy: .public) skipped: not configured")
+            Telemetry.event("sync.start", scope: .sync, ["result": .name("not-configured")])
             return report
         }
 
         let pending = SharedStore.readAll().filter { !SharedStore.isShipped($0.id) }
-        Diagnostics.sync.notice(
-            "sync start process=\(Diagnostics.process, privacy: .public) pending=\(pending.count, privacy: .public)"
-        )
+        let span = Telemetry.span("sync", scope: .sync, parent: parent)
+        Telemetry.event("sync.start", scope: .sync, ["pending": .count(pending.count)])
         for item in pending {
+            let itemSpan = Telemetry.span("sync.item", scope: .sync, parent: span)
+            itemSpan.setAttribute(key: "attachment", value: item.attachmentPath != nil)
             do {
                 try await ship(item)
                 SharedStore.markShipped(item.id)
                 report.shipped += 1
-                Diagnostics.sync.notice("sync item process=\(Diagnostics.process, privacy: .public) result=shipped")
+                Telemetry.event("sync.item", scope: .sync, ["result": .name("shipped")])
+                Telemetry.end(itemSpan, attributes: ["result": .name("shipped")])
             } catch UploadError.nothingToSend {
                 SharedStore.markShipped(item.id)
                 report.skipped += 1
-                Diagnostics.sync.notice("sync item process=\(Diagnostics.process, privacy: .public) result=skipped")
+                Telemetry.event("sync.item", scope: .sync, ["result": .name("skipped")])
+                Telemetry.end(itemSpan, attributes: ["result": .name("skipped")])
             } catch {
                 report.failed += 1
                 let kind = failureKind(error)
                 report.lastFailure = kind
-                Diagnostics.sync.error(
-                    "sync item process=\(Diagnostics.process, privacy: .public) result=failed kind=\(kind, privacy: .public)"
-                )
+                Telemetry.event("sync.item", scope: .sync, severity: .error, [
+                    "result": .name("failed"),
+                    "kind": .name(kind)
+                ])
+                Telemetry.end(itemSpan, failure: kind)
             }
         }
         report.auth = lastAuth
-        Diagnostics.sync.notice(
-            "sync done process=\(Diagnostics.process, privacy: .public) \(report.diagnostics, privacy: .public)"
-        )
+        Telemetry.event("sync.done", scope: .sync, [
+            "sent": .count(report.shipped),
+            "failed": .count(report.failed),
+            "skipped": .count(report.skipped),
+            "lastFailure": .name(report.lastFailure ?? "-"),
+            "auth": .name(report.auth)
+        ])
+        Telemetry.end(span, failure: report.failed > 0 ? (report.lastFailure ?? "failed") : nil, attributes: [
+            "sent": .count(report.shipped),
+            "failed": .count(report.failed),
+            "skipped": .count(report.skipped),
+            "auth.source": .name(report.auth)
+        ])
         return report
     }
 
@@ -142,28 +161,29 @@ public enum Uploader {
             let bearer = try await OAuthClient.validAccessToken()
             request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
             lastAuth = "oauth"
-            Diagnostics.sync.notice("auth process=\(Diagnostics.process, privacy: .public) source=oauth")
+            Telemetry.event("sync.auth", scope: .sync, ["source": .name("oauth")])
         } catch {
-            lastAuth = "oauthFailed:" + String(describing: error).prefix(40)
+            // The case name, not the description: for a token failure the
+            // description is the server's response body, which is the user's.
+            let kind = (error as? OAuthClient.Failure)?.kind ?? String(describing: type(of: error))
+            lastAuth = "oauthFailed:" + kind
             // Which way the sign-in failed matters more than the upload's
             // eventual 401: the extension reads the token from the shared
             // keychain, and "not signed in" there while the app is signed in
             // means the two do not share it.
-            Diagnostics.sync.error(
-                """
-                auth process=\(Diagnostics.process, privacy: .public) oauth failed \
-                kind=\(String(describing: error).prefix(40), privacy: .public) \
-                detail=\(error.localizedDescription, privacy: .private)
-                """
-            )
+            Telemetry.event("sync.auth", scope: .sync, severity: .error, [
+                "source": .name("oauthFailed"),
+                "failure": .name(kind)
+            ])
+            Diagnostics.sync.error("auth detail=\(error.localizedDescription, privacy: .private)")
             let token = SyncSettings.token
             if !token.isEmpty {
                 request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 lastAuth += "/static"
-                Diagnostics.sync.notice("auth process=\(Diagnostics.process, privacy: .public) source=static")
+                Telemetry.event("sync.auth", scope: .sync, ["source": .name("static")])
             } else {
                 lastAuth += "/none"
-                Diagnostics.sync.notice("auth process=\(Diagnostics.process, privacy: .public) source=none")
+                Telemetry.event("sync.auth", scope: .sync, severity: .error, ["source": .name("none")])
             }
         }
         return request

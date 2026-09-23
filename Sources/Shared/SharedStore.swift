@@ -152,13 +152,17 @@ public enum SharedStore {
     /// Append an item to the outbox file matching its vault key.
     public static func append(_ item: SharedItem) {
         guard let url = outboxURL(forKey: item.vaultKey) else {
-            Diagnostics.storage.error("outbox append process=\(Diagnostics.process, privacy: .public) result=no-container")
+            Telemetry.event("outbox.append", scope: .storage, severity: .error, [
+                "result": .name("no-container")
+            ])
             return
         }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         guard var data = try? encoder.encode(item) else {
-            Diagnostics.storage.error("outbox append process=\(Diagnostics.process, privacy: .public) result=encode-failed")
+            Telemetry.event("outbox.append", scope: .storage, severity: .error, [
+                "result": .name("encode-failed")
+            ])
             return
         }
         data.append(0x0A)
@@ -173,24 +177,21 @@ public enum SharedStore {
                 try handle.seekToEnd()
                 try handle.write(contentsOf: data)
             }
-            Diagnostics.storage.notice(
-                """
-                outbox append process=\(Diagnostics.process, privacy: .public) result=ok \
-                bytes=\(data.count, privacy: .public) \
-                attachment=\(item.attachmentPath != nil, privacy: .public)
-                """
-            )
+            Telemetry.event("outbox.append", scope: .storage, [
+                "result": .name("ok"),
+                "bytes": .count(data.count),
+                "attachment": .flag(item.attachmentPath != nil)
+            ])
         } catch {
             // Best-effort by design (the user can re-share), but never silent:
             // a dropped outbox line is the difference between a capture that
             // reaches the server and one that does not.
-            Diagnostics.storage.error(
-                """
-                outbox append process=\(Diagnostics.process, privacy: .public) result=failed \
-                error=\(String(describing: type(of: error)), privacy: .public) \
-                detail=\(error.localizedDescription, privacy: .private)
-                """
-            )
+            Telemetry.event("outbox.append", scope: .storage, severity: .error, [
+                "result": .name("failed"),
+                "error": .name(String(describing: type(of: error)))
+            ])
+            // The message itself may name the file the user shared.
+            Diagnostics.storage.error("outbox append detail=\(error.localizedDescription, privacy: .private)")
         }
     }
 

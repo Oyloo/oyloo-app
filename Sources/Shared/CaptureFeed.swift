@@ -72,16 +72,24 @@ public enum CapturesAPI {
         let (data, response) = try await URLSession.shared.data(for: request)
         let code = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(code) else {
-            Diagnostics.sync.error("captures fetch failed status=\(code, privacy: .public)")
+            Telemetry.event("captures.fetch", scope: .sync, severity: .error, [
+                "result": .name("http"),
+                "status": .status(Int32(code))
+            ])
             throw Failure.http(code)
         }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let envelope = try? decoder.decode(Envelope.self, from: data) else {
-            Diagnostics.sync.error("captures fetch failed reason=malformed")
+            Telemetry.event("captures.fetch", scope: .sync, severity: .error, [
+                "result": .name("malformed")
+            ])
             throw Failure.malformed
         }
-        Diagnostics.sync.notice("captures fetched count=\(envelope.items.count, privacy: .public)")
+        Telemetry.event("captures.fetch", scope: .sync, [
+            "result": .name("ok"),
+            "count": .count(envelope.items.count)
+        ])
         return envelope.items
     }
 }

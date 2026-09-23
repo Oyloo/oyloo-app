@@ -52,47 +52,40 @@ public final class VaultStore {
         let data = SharedDefaults.data(forKey: storageKey)
         lastLoadStatus = SharedDefaults.lastReadStatus
         guard let data else {
-            Diagnostics.storage.notice(
-                "vaults load process=\(Diagnostics.process, privacy: .public) result=absent"
-            )
+            Telemetry.event("vaults.load", scope: .storage, ["result": .name("absent")])
             return []
         }
         let decoder = JSONDecoder()
         guard let vaults = try? decoder.decode([Vault].self, from: data) else {
             // Stored bytes that do not decode look exactly like "no vaults" in
             // the UI, so they get their own line.
-            Diagnostics.storage.error(
-                """
-                vaults load process=\(Diagnostics.process, privacy: .public) \
-                result=undecodable bytes=\(data.count, privacy: .public)
-                """
-            )
+            Telemetry.event("vaults.load", scope: .storage, severity: .error, [
+                "result": .name("undecodable"),
+                "bytes": .count(data.count)
+            ])
             return []
         }
         // Count only: vault keys are user-chosen names.
-        Diagnostics.storage.notice(
-            """
-            vaults load process=\(Diagnostics.process, privacy: .public) \
-            count=\(vaults.count, privacy: .public)
-            """
-        )
+        Telemetry.event("vaults.load", scope: .storage, [
+            "result": .name("ok"),
+            "count": .count(vaults.count)
+        ])
         return vaults
     }
 
     private func save() {
         let encoder = JSONEncoder()
         guard let data = try? encoder.encode(vaults) else {
-            Diagnostics.storage.error(
-                "vaults save process=\(Diagnostics.process, privacy: .public) result=encode-failed"
-            )
+            Telemetry.event("vaults.save", scope: .storage, severity: .error, [
+                "result": .name("encode-failed")
+            ])
             return
         }
-        Diagnostics.storage.notice(
-            """
-            vaults save process=\(Diagnostics.process, privacy: .public) \
-            count=\(self.vaults.count, privacy: .public) bytes=\(data.count, privacy: .public)
-            """
-        )
+        Telemetry.event("vaults.save", scope: .storage, [
+            "result": .name("ok"),
+            "count": .count(vaults.count),
+            "bytes": .count(data.count)
+        ])
         SharedDefaults.set(data, forKey: storageKey)
     }
 }

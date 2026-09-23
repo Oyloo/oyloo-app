@@ -1,5 +1,6 @@
 import Foundation
 import OpenTelemetryApi
+import OpenTelemetryProtocolExporterCommon
 import OpenTelemetryProtocolExporterHttp
 import OpenTelemetrySdk
 import UIKit
@@ -71,13 +72,35 @@ public enum Telemetry {
 
     // MARK: - Lifecycle
 
-    private static let lock = NSLock()
+    // Recursive: bootstrapping reads settings, reading settings logs, and
+    // logging bootstraps. The cycle is real and it is fine — it just must not
+    // deadlock on the way through.
+    private static let lock = NSRecursiveLock()
     nonisolated(unsafe) private static var started = false
     nonisolated(unsafe) private static var loggerProvider: LoggerProviderSdk?
     nonisolated(unsafe) private static var tracerProvider: TracerProviderSdk?
     nonisolated(unsafe) private static var logProcessor: BatchLogRecordProcessor?
     nonisolated(unsafe) private static var spanProcessor: BatchSpanProcessor?
     nonisolated(unsafe) private static var bearer: String?
+    nonisolated(unsafe) private static var exportFailed = false
+
+    /// True when the last batch did not reach the server.
+    ///
+    /// The share extension asks before writing the keychain relay: with the
+    /// collector reachable, repeating the line through the app's console is
+    /// noise, and the relay exists only for the case where it is not.
+    public static var lastExportFailed: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return exportFailed
+    }
+
+    /// Reported by the transport after every attempt.
+    static func recordExportOutcome(succeeded: Bool) {
+        lock.lock()
+        exportFailed = !succeeded
+        lock.unlock()
+    }
 
     /// Idempotent, and called by every `event`/`span`: nothing has to remember
     /// to bootstrap first, and a record emitted before an explicit start is
@@ -132,7 +155,7 @@ public enum Telemetry {
 
         let logger = LoggerProviderBuilder()
             .with(resource: resource)
-            .with(processors: [OSLogMirror(), logs])
+            .with(processors: [logs])
             .build()
         let tracer = TracerProviderBuilder()
             .with(resource: resource)
@@ -211,6 +234,21 @@ public enum Telemetry {
         severity: Severity = .info,
         _ attributes: [String: TelemetryValue] = [:]
     ) {
+        let line = readableLine(name: name, attributes: attributes)
+        // The local copy is written first and unconditionally. It is the
+        // fallback the network cannot take away, and it also survives the
+        // moment during bootstrap when there is no provider yet — which is
+        // exactly when the storage and keychain lines are emitted.
+        //
+        // Public by construction: `TelemetryValue` admits nothing a user
+        // typed. Anything private stays a direct `Diagnostics` call and never
+        // becomes a record.
+        if severity >= .error {
+            scope.logger.error("\(line, privacy: .public)")
+        } else {
+            scope.logger.notice("\(line, privacy: .public)")
+        }
+
         start()
         guard let provider = loggerProvider else { return }
         var mapped = attributes.mapValues(\.attribute)
@@ -221,7 +259,7 @@ public enum Telemetry {
             .setEventName(name)
             // The body repeats what the attributes hold: a logs backend shows
             // one readable line, and the attributes stay queryable.
-            .setBody(.string(readableLine(name: name, attributes: attributes)))
+            .setBody(.string(line))
             .setAttributes(mapped)
             .emit()
     }
@@ -294,27 +332,4 @@ public enum Telemetry {
             }
         }
     }
-}
-
-/// Writes every exported record to the system log as well.
-///
-/// The local copy is the fallback the network cannot take away: with no
-/// server, no token or no signal, `idevicesyslog` still shows the same lines
-/// it always did. Records are public here because their content is public by
-/// construction — `TelemetryValue` admits nothing else. Anything private
-/// stays a direct `Diagnostics` call and never becomes a record.
-final class OSLogMirror: LogRecordProcessor {
-    func onEmit(logRecord: ReadableLogRecord) {
-        let scope = TelemetryScope(rawValue: logRecord.instrumentationScopeInfo.name) ?? .share
-        guard case .string(let line)? = logRecord.body else { return }
-        let severity = logRecord.severity ?? .info
-        if severity >= .error {
-            scope.logger.error("\(line, privacy: .public)")
-        } else {
-            scope.logger.notice("\(line, privacy: .public)")
-        }
-    }
-
-    func forceFlush(explicitTimeout: TimeInterval?) -> ExportResult { .success }
-    func shutdown(explicitTimeout: TimeInterval?) -> ExportResult { .success }
 }

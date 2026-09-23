@@ -58,6 +58,7 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
         guard let endpoint = Telemetry.endpoint(for: spool.signal) else {
             // Nothing to re-point at: hold the body until a server exists.
             spool.write(request.httpBody)
+            Telemetry.recordExportOutcome(succeeded: false)
             return .failure(TransportError.noServer)
         }
 
@@ -71,6 +72,10 @@ public final class TelemetryTransport: HTTPClient, @unchecked Sendable {
         if case .failure = result {
             spool.write(request.httpBody)
         }
+        Telemetry.recordExportOutcome(succeeded: {
+            if case .success = result { return true }
+            return false
+        }())
         return result
     }
 

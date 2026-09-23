@@ -35,15 +35,14 @@ public enum SharedDefaults {
     private static let backendAnnounced: Bool = {
         let container = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: SharedStore.appGroupID)
-        Diagnostics.storage.notice(
-            """
-            backend process=\(Diagnostics.process, privacy: .public) \
-            usesAppGroup=\(container != nil, privacy: .public) \
-            group=\(SharedStore.appGroupID, privacy: .public) \
-            container=\(container?.path ?? "nil", privacy: .private) \
-            service=\(service, privacy: .public)
-            """
-        )
+        Telemetry.event("storage.backend", scope: .storage, [
+            "usesAppGroup": .flag(container != nil),
+            "group": .name(SharedStore.appGroupID),
+            "service": .name(service)
+        ])
+        // The container's path is the one part of this that is the user's:
+        // it carries their device's identifiers. Private, and separate.
+        Diagnostics.storage.debug("backend container=\(container?.path ?? "nil", privacy: .private)")
         return true
     }()
 
@@ -124,14 +123,16 @@ public enum SharedDefaults {
         // actually landed in is the other half of that question: an item filed
         // under the app's own identifier group is invisible to the extension
         // even though both declare the shared group.
-        Diagnostics.storage.notice(
-            """
-            keychain read process=\(Diagnostics.process, privacy: .public) \
-            key=\(publicLabel(forKey: key), privacy: .public) \
-            status=\(status, privacy: .public) \
-            bytes=\(data?.count ?? -1, privacy: .public) \
-            group=\(data == nil ? "-" : accessGroup(forKey: key), privacy: .public)
-            """
+        Telemetry.event(
+            "keychain.read",
+            scope: .storage,
+            severity: status == errSecSuccess || status == errSecItemNotFound ? .info : .error,
+            [
+                "key": .name(publicLabel(forKey: key)),
+                "status": .status(status),
+                "bytes": .count(data?.count ?? -1),
+                "group": .name(data == nil ? "-" : accessGroup(forKey: key))
+            ]
         )
         return data
     }
@@ -153,13 +154,10 @@ public enum SharedDefaults {
         let q = query(key)
         let deleted = SecItemDelete(q as CFDictionary)
         guard let value else {
-            Diagnostics.storage.notice(
-                """
-                keychain clear process=\(Diagnostics.process, privacy: .public) \
-                key=\(publicLabel(forKey: key), privacy: .public) \
-                status=\(deleted, privacy: .public)
-                """
-            )
+            Telemetry.event("keychain.clear", scope: .storage, [
+                "key": .name(publicLabel(forKey: key)),
+                "status": .status(deleted)
+            ])
             return
         }
         var add = q
@@ -168,13 +166,15 @@ public enum SharedDefaults {
         // the screen is locked, and a value it cannot read is a failed capture.
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         let status = SecItemAdd(add as CFDictionary, nil)
-        Diagnostics.storage.notice(
-            """
-            keychain write process=\(Diagnostics.process, privacy: .public) \
-            key=\(publicLabel(forKey: key), privacy: .public) \
-            bytes=\(value.count, privacy: .public) \
-            status=\(status, privacy: .public)
-            """
+        Telemetry.event(
+            "keychain.write",
+            scope: .storage,
+            severity: status == errSecSuccess ? .info : .error,
+            [
+                "key": .name(publicLabel(forKey: key)),
+                "bytes": .count(value.count),
+                "status": .status(status)
+            ]
         )
     }
 }

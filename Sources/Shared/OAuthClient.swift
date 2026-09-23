@@ -18,6 +18,23 @@ public enum OAuthClient {
         case token(String)
         case notSignedIn
 
+        /// The case, with nothing of the server's answer in it.
+        ///
+        /// The description below carries the server's own words — for a token
+        /// failure, its response body verbatim — which is the user's and is
+        /// not for a public log or an exported attribute. This is what those
+        /// get instead.
+        public var kind: String {
+            switch self {
+            case .notConfigured: "notConfigured"
+            case .discovery: "discovery"
+            case .registration: "registration"
+            case .authorization: "authorization"
+            case .token: "token"
+            case .notSignedIn: "notSignedIn"
+            }
+        }
+
         public var errorDescription: String? {
             switch self {
             case .notConfigured: "Set the server address first."
