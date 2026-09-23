@@ -31,10 +31,13 @@ public struct TaskItem: Decodable, Sendable, Equatable, Identifiable {
     /// P1…P4, computed by the server from importance and urgency.
     public let priority: String
     public let overdue: Bool
+    public let waitingOn: String?
+    public let tags: [String]
 
     public init(
         id: String, title: String, status: String, important: Bool, due: String?,
-        circleId: String?, priority: String, overdue: Bool
+        circleId: String?, priority: String, overdue: Bool,
+        waitingOn: String? = nil, tags: [String] = []
     ) {
         self.id = id
         self.title = title
@@ -44,22 +47,77 @@ public struct TaskItem: Decodable, Sendable, Equatable, Identifiable {
         self.circleId = circleId
         self.priority = priority
         self.overdue = overdue
+        self.waitingOn = waitingOn
+        self.tags = tags
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, status, important, due, circleId, priority, overdue, waitingOn, tags
+    }
+
+    /// Fields added after the foundation build fall back to empty values.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        title = try c.decode(String.self, forKey: .title)
+        status = try c.decode(String.self, forKey: .status)
+        important = try c.decodeIfPresent(Bool.self, forKey: .important) ?? false
+        due = try c.decodeIfPresent(String.self, forKey: .due)
+        circleId = try c.decodeIfPresent(String.self, forKey: .circleId)
+        priority = try c.decodeIfPresent(String.self, forKey: .priority) ?? "P4"
+        overdue = try c.decodeIfPresent(Bool.self, forKey: .overdue) ?? false
+        waitingOn = try c.decodeIfPresent(String.self, forKey: .waitingOn)
+        tags = (try? c.decodeIfPresent([String].self, forKey: .tags)) ?? []
     }
 
     public var isOpen: Bool { status != "done" && status != "dropped" }
 }
 
+public struct TaskTag: Decodable, Sendable, Equatable, Identifiable, Hashable {
+    public let id: String
+    public let label: String
+    public init(id: String, label: String) { self.id = id; self.label = label }
+}
+
+public struct TaskCircle: Decodable, Sendable, Equatable, Identifiable, Hashable {
+    public let id: String
+    public let label: String
+    public init(id: String, label: String) { self.id = id; self.label = label }
+}
+
 public struct TasksOverview: Decodable, Sendable, Equatable {
     public let today: String
     public let view: String
+    public let tag: String?
     public let counts: [String: Int]
     public let todos: [TaskItem]
+    public let tags: [TaskTag]
+    public let circles: [TaskCircle]
 
-    public init(today: String, view: String, counts: [String: Int], todos: [TaskItem]) {
+    public init(
+        today: String, view: String, counts: [String: Int], todos: [TaskItem],
+        tag: String? = nil, tags: [TaskTag] = [], circles: [TaskCircle] = []
+    ) {
         self.today = today
         self.view = view
+        self.tag = tag
         self.counts = counts
         self.todos = todos
+        self.tags = tags
+        self.circles = circles
+    }
+
+    private enum CodingKeys: String, CodingKey { case today, view, tag, counts, todos, tags, circles }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        today = try c.decode(String.self, forKey: .today)
+        view = try c.decode(String.self, forKey: .view)
+        tag = try c.decodeIfPresent(String.self, forKey: .tag)
+        counts = try c.decodeIfPresent([String: Int].self, forKey: .counts) ?? [:]
+        todos = try c.decode([TaskItem].self, forKey: .todos)
+        tags = (try? c.decodeIfPresent([TaskTag].self, forKey: .tags)) ?? []
+        circles = (try? c.decodeIfPresent([TaskCircle].self, forKey: .circles)) ?? []
     }
 }
 
