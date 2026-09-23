@@ -40,6 +40,7 @@ final class ShareViewController: UIViewController {
     /// happened when I shared that" without any of what was shared in it.
     private var shareSpan: Span?
     private var extractSpan: Span?
+    private var openSummary: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -81,14 +82,8 @@ final class ShareViewController: UIViewController {
             "refreshPresent": .flag(tokens?.refreshToken != nil),
             "tokenFresh": .flag(tokens?.isFresh ?? false)
         ])
-        // Same line into shared storage for the app to report on its next
-        // launch (see SharedDefaults.lastShareDiagnosticsKey). If even this
-        // write is invisible to the app, the two processes do not share a
-        // keychain group at all, which is itself the answer.
-        SharedDefaults.set(
-            ISO8601DateFormatter().string(from: Date()) + " " + summary,
-            forKey: SharedDefaults.lastShareDiagnosticsKey
-        )
+        // Kept for the keychain relay, written only if the export fails.
+        openSummary = summary
         initialPreview = detectInitialPreview()
         presentPicker()
         extractSpan = Telemetry.span("share.extract", parent: shareSpan)
@@ -206,11 +201,14 @@ final class ShareViewController: UIViewController {
             self.shareSpan = nil
         }
         await Telemetry.flushWithFreshToken()
-        if let relay, Telemetry.lastExportFailed {
-            SharedDefaults.set(
-                ISO8601DateFormatter().string(from: Date()) + " " + relay,
-                forKey: SharedDefaults.lastUploadDiagnosticsKey
-            )
+        if Telemetry.lastExportFailed {
+            let stamp = ISO8601DateFormatter().string(from: Date())
+            if let openSummary {
+                SharedDefaults.set(stamp + " " + openSummary, forKey: SharedDefaults.lastShareDiagnosticsKey)
+            }
+            if let relay {
+                SharedDefaults.set(stamp + " " + relay, forKey: SharedDefaults.lastUploadDiagnosticsKey)
+            }
         }
         await MainActor.run {
             if cancelled {
