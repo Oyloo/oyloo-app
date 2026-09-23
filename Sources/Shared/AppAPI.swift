@@ -26,17 +26,30 @@ public enum AppAPI {
 
     public static func me() async throws -> CachedBody { try await get("me") }
     public static func money() async throws -> CachedBody { try await get("money") }
-    public static func tasks(view: String) async throws -> CachedBody {
-        try await get("tasks", query: [URLQueryItem(name: "view", value: view)])
+    public static func tasks(view: String, tag: String? = nil) async throws -> CachedBody {
+        try await get("tasks", query: tasksQuery(view: view, tag: tag))
+    }
+
+    public static func tasksQuery(view: String, tag: String?) -> [URLQueryItem] {
+        [URLQueryItem(name: "view", value: view)] + (tag.map { [URLQueryItem(name: "tag", value: $0)] } ?? [])
     }
 
     public static func completeTask(id: String) async throws {
-        var request = try await request(path: "tasks/\(id)")
-        request.httpMethod = "PATCH"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["status": "done"])
-        let (_, response) = try await URLSession.shared.data(for: request)
-        try check(response)
+        try await setTaskStatus(id: id, status: "done")
+    }
+
+    public static func setTaskStatus(id: String, status: String) async throws {
+        try await send("PATCH", "tasks/\(pathSegment(id))", ["status": status])
+    }
+
+    public static func createTask(_ draft: TaskDraft) async throws {
+        try await send("POST", "tasks", draft.createBody)
+    }
+
+    /// A draft from a dictated phrase; the server saves nothing.
+    public static func parseTask(text: String) async throws -> TaskDraft {
+        let data = try await send("POST", "tasks/parse", ["text": text])
+        return try AppJSON.decoder.decode(TaskDraft.self, from: data)
     }
 
     public static func createGoal(title: String, targetCents: Int) async throws {
@@ -79,7 +92,8 @@ public enum AppAPI {
 
     /// Writes answer `{ error, message }` on refusal; the code lets the
     /// screen word it, the message is the fallback.
-    private static func send(_ method: String, _ path: String, _ body: [String: Any]?) async throws {
+    @discardableResult
+    private static func send(_ method: String, _ path: String, _ body: [String: Any]?) async throws -> Data {
         var request = try await request(path: path)
         request.httpMethod = method
         if let body {
@@ -95,6 +109,7 @@ public enum AppAPI {
             }
             throw Failure.http(code)
         }
+        return data
     }
 
     /// Cache key for a call; the same string `CachedResource` reads back.
